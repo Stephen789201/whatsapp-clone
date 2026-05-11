@@ -1,0 +1,35 @@
+# Node modules (for both frontend and backend)
+frontend/node_modules/
+backend/node_modules/
+
+# Build output
+frontend/.next/
+frontend/out/
+frontend/dist/
+backend/dist/
+
+# Environment files
+frontend/.env
+frontend/.env.*
+backend/.env
+backend/.env.*
+
+# Logs
+frontend/logs/
+backend/logs/
+*.log
+
+# Coverage reports
+frontend/coverage/
+backend/coverage/
+
+# IDE/editor settings
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Misc
+*.swp
