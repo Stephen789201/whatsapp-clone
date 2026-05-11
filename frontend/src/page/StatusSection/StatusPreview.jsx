@@ -8,7 +8,7 @@ import formatTimestamp from "../../utils/formatTime"
 const StatusPreview = ({ contact, currentIndex, onClose, onNext, onPrev, onDelete, theme, currentUser }) => {
   const [progress, setProgress] = useState(0)
   const [showViewers, setShowViewers] = useState(false)
-  const [loadingViewers, setLoadingViewers] = useState(false)
+  const [loadingViewers] = useState(false)
 
 
   const currentStatus = contact?.statuses[currentIndex]
@@ -32,7 +32,7 @@ useEffect(() => {
   }, 100)
 
   return () => clearInterval(interval) // Cleanup the interval when status changes or component unmounts
-}, [currentIndex])
+}, [currentIndex, onNext])
 
 
 

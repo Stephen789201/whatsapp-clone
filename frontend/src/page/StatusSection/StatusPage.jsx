@@ -34,7 +34,6 @@ export default function StatusPage() {
     deleteStatus,
     getUserStatuses,
     getOtherStatuses,
-    initializeSocket,
     cleanupSocket,
     clearError,
   } = useStatusStore()
@@ -48,12 +47,12 @@ export default function StatusPage() {
     return () => {
       cleanupSocket()
     }
-  }, [user?._id])
+  }, [user?._id, fetchStatuses, cleanupSocket])
 
   // Clear error when component mounts
   useEffect(() => {
     return () => clearError()
-  }, [])
+  }, [clearError])
 
   const handleFileChange = (e) => {
     const file = e.target.files[0]

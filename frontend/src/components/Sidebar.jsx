@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Link, useLocation } from "react-router-dom";
-import { FaWhatsapp, FaUser, FaCog, FaUserCircle } from "react-icons/fa";
+import { FaWhatsapp, FaCog, FaUserCircle } from "react-icons/fa";
 import { MdRadioButtonChecked } from "react-icons/md"; // New icon for status
 import useStore from "../store/layoutStore";
 import userStore from "../store/useUserStore";
