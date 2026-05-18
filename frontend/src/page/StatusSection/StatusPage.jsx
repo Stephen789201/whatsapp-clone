@@ -69,7 +69,8 @@ export default function StatusPage() {
 
     try {
       await createStatus({
-        content: newStatus,
+        content: selectedFile ? "" : newStatus,
+        caption: selectedFile ? newStatus : "",
         file: selectedFile,
       })
 
