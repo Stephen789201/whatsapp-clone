@@ -598,7 +598,7 @@ const Login = () => {
                 }`}
               >
                 I agree to the{" "}
-                <a href="#" className="text-green-500 hover:underline">
+                <a href="#!" className="text-green-500 hover:underline">
                   Terms and Conditions
                 </a>
               </label>

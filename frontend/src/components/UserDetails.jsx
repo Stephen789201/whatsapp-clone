@@ -17,7 +17,6 @@ export default function UserDetails() {
   const [about, setAbout] = useState("Hey there! I am using Talkies.");
   const [profileImage, setProfileImage] = useState(null);
   const [preview, setPreview] = useState(null);
-  const [showAvatarModal, setShowAvatarModal] = useState(false);
 
   const [isEditingName, setIsEditingName] = useState(false);
   const [isEditingAbout, setIsEditingAbout] = useState(false);
@@ -40,11 +39,7 @@ export default function UserDetails() {
     if (file) setPreview(URL.createObjectURL(file));
   };
 
-  const handleAvatarSelect = (url) => {
-    setProfileImage(null); // remove file if avatar selected
-    setPreview(url);
-    setShowAvatarModal(false);
-  };
+
 
   const handleSave = async (field) => {
     try {
@@ -104,7 +99,7 @@ export default function UserDetails() {
               <div className="relative group">
                 <img
                   src={preview || user?.profilePicture}
-                  alt="Profile Picture"
+                  alt="Profile"
                   className="w-52 h-52 rounded-full mb-2 object-cover"
                 />
                 <label

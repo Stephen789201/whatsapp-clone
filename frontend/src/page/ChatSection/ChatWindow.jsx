@@ -53,7 +53,6 @@ export default function ChatWindow({ selectedContact, setSelectedContact }) {
   const socket = getSocket();
   const {
     messages,
-    loading,
     sendMessage,
     startTyping,
     stopTyping,
@@ -67,7 +66,7 @@ export default function ChatWindow({ selectedContact, setSelectedContact }) {
     deleteMessage,
     markMessagesAsRead,
   } = useChatStore();
-  const { initiateCall } = useVideoCallStore();
+
 
   // Get online status and last seen
   const online = isUserOnline(selectedContact?._id);
@@ -101,7 +100,7 @@ export default function ChatWindow({ selectedContact, setSelectedContact }) {
 
   useEffect(() => {
     fetchConversations();
-  }, []);
+  }, [fetchConversations]);
 
   // Fetch messages when selected contact changes
   // useEffect(() => {
