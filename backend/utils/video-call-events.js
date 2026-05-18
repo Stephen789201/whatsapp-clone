@@ -4,110 +4,75 @@ const handleVideoCallEvents = (socket, io, onlineUsers) => {
   // Initiate video call
   socket.on("initiate_call", ({ callerId, receiverId, callType, callerInfo }) => {
     console.log(` SERVER: Call initiated from ${callerId} to ${receiverId}`)
-
-    const receiverSocketId = onlineUsers.get(receiverId)
-
-    if (receiverSocketId) {
-      const callId = `${callerId}-${receiverId}-${Date.now()}`
-
-
-      io.to(receiverSocketId).emit("incoming_call", {
-        callerId,
-        callerName: callerInfo.username,
-        callerAvatar: callerInfo.profilePicture,
-        callType,
-        callId,
-      })
-    } else {
-      console.log(`SERVER: Receiver ${receiverId} is offline`)
-      socket.emit("call_failed", { reason: "User is offline" })
-    }
+    
+    const callId = `${callerId}-${receiverId}-${Date.now()}`
+    
+    // Emit to receiver's room (all tabs)
+    io.to(String(receiverId)).emit("incoming_call", {
+      callerId,
+      callerName: callerInfo.username,
+      callerAvatar: callerInfo.profilePicture,
+      callType,
+      callId,
+    })
   })
 
   // Accept call
   socket.on("accept_call", ({ callerId, callId, receiverInfo }) => {
     console.log(`SERVER: Call ${callId} accepted by receiver, notifying caller ${callerId}`)
 
-    const callerSocketId = onlineUsers.get(callerId)
-
-    if (callerSocketId) {
-      io.to(callerSocketId).emit("call_accepted", {
-        callId,
-        receiverName: receiverInfo.username,
-        receiverAvatar: receiverInfo.profilePicture,
-      })
-      console.log(` SERVER: call_accepted sent to caller ${callerId}`)
-    } else {
-      console.log(` SERVER: Caller ${callerId} not found`)
-    }
+    // Emit to caller's room (all tabs)
+    io.to(String(callerId)).emit("call_accepted", {
+      callId,
+      receiverName: receiverInfo.username,
+      receiverAvatar: receiverInfo.profilePicture,
+    })
   })
 
   // Reject call
   socket.on("reject_call", ({ callerId, callId }) => {
-    const callerSocketId = onlineUsers.get(callerId)
-
-    if (callerSocketId) {
-      io.to(callerSocketId).emit("call_rejected", { callId })
-    }
+    io.to(String(callerId)).emit("call_rejected", { callId })
   })
 
   // End call
   socket.on("end_call", ({ callId, participantId }) => {
     console.log(` SERVER: Call ${callId} ended, notifying participant ${participantId}`)
-    const participantSocketId = onlineUsers.get(participantId)
-
-    if (participantSocketId) {
-      io.to(participantSocketId).emit("call_ended", { callId })
-    }
+    io.to(String(participantId)).emit("call_ended", { callId })
   })
 
-  // WebRTC signaling events with proper userId handling
+  // WebRTC signaling events with room-based forwarding
   socket.on("webrtc_offer", ({ offer, receiverId, callId }) => {
-    console.log(`SERVER: Forwarding offer from ${socket.userId} to ${receiverId} for call ${callId}`)
-    const receiverSocketId = onlineUsers.get(receiverId)
-
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("webrtc_offer", {
-        offer,
-        senderId: socket.userId, // Now this should be defined
-        callId,
-      })
-      console.log(` SERVER: Offer forwarded to ${receiverId}`)
-    } else {
-      console.log(`SERVER: Receiver ${receiverId} not found for offer`)
-    }
-  })
+    const senderId = socket.userId || "unknown";
+    console.log(`SERVER: Forwarding offer from ${senderId} to ${receiverId} for call ${callId}`)
+    
+    io.to(String(receiverId)).emit("webrtc_offer", {
+      offer,
+      senderId: senderId,
+      callId,
+    });
+  });
 
   socket.on("webrtc_answer", ({ answer, receiverId, callId }) => {
-    console.log(` SERVER: Forwarding answer from ${socket.userId} to ${receiverId} for call ${callId}`)
-    const receiverSocketId = onlineUsers.get(receiverId)
-
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("webrtc_answer", {
-        answer,
-        senderId: socket.userId, // Now this should be defined
-        callId,
-      })
-      console.log(` SERVER: Answer forwarded to ${receiverId}`)
-    } else {
-      console.log(` SERVER: Receiver ${receiverId} not found for answer`)
-    }
-  })
+    const senderId = socket.userId || "unknown";
+    console.log(` SERVER: Forwarding answer from ${senderId} to ${receiverId} for call ${callId}`)
+    
+    io.to(String(receiverId)).emit("webrtc_answer", {
+      answer,
+      senderId: senderId,
+      callId,
+    });
+  });
 
   socket.on("webrtc_ice_candidate", ({ candidate, receiverId, callId }) => {
-    console.log(` SERVER: Forwarding ICE candidate from ${socket.userId} to ${receiverId}`)
-    const receiverSocketId = onlineUsers.get(receiverId)
-
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("webrtc_ice_candidate", {
-        candidate,
-        senderId: socket.userId, // Now this should be defined
-        callId,
-      })
-    } else {
-      console.log(` SERVER: Receiver ${receiverId} not found for ICE candidate`)
-    }
-  })
+    const senderId = socket.userId || "unknown";
+    console.log(` SERVER: Forwarding ICE candidate from ${senderId} to ${receiverId}`)
+    
+    io.to(String(receiverId)).emit("webrtc_ice_candidate", {
+      candidate,
+      senderId: senderId,
+      callId,
+    });
+  });
 }
 
 module.exports = handleVideoCallEvents

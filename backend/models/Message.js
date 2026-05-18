@@ -6,12 +6,15 @@ const messageSchema = new mongoose.Schema({
   receiver: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   content: { type: String },
   imageOrVideoUrl: { type: String },
-  contentType: { type: String, enum: ['image', 'video','text'] },
+  audioUrl: { type: String },
+  contentType: { type: String, enum: ['image', 'video','text', 'audio'] },
   reactions: [{
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     emoji: String
   }],
-  messageStatus:{type:String,default:'send'}
+  messageStatus:{type:String,default:'send'},
+  isDeleted: { type: Boolean, default: false },
+  deletedFor: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
 }, { timestamps: true });
 
 const Message = mongoose.model('Message', messageSchema);

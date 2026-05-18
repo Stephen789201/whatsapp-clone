@@ -38,7 +38,7 @@ export default function HomeScreen() {
                 transition={{ duration: 0.5 }}
                 className="h-full"
             >
-                <ChatList contacts={allUsers} setSelectedContact={setSelectedContact} />
+                <ChatList contacts={allUsers} setSelectedContact={setSelectedContact} refreshUsers={getUser} />
             </motion.div>
         </Layout>
     )

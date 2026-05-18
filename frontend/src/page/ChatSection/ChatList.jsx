@@ -1,37 +1,53 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { FaPlus, FaSearch } from "react-icons/fa";
+import { FaPlus, FaSearch, FaCheck, FaCheckDouble } from "react-icons/fa";
 import useStore from "../../store/layoutStore";
 import useThemeStore from "../../store/themeStore";
 import formatTimestamp from "../../utils/formatTime";
 import userStore from "../../store/useUserStore";
+import FriendsDrawer from "./FriendsDrawer";
 
-const ChatList = ({ contacts }) => {
+const ChatList = ({ contacts, refreshUsers }) => {
   const setSelectedContact = useStore((state) => state.setSelectedContact);
   const selectedContact = useStore((state) => state.selectedContact);
   const { theme } = useThemeStore();
-    const { user } = userStore();
+  const { user } = userStore();
   const [searchTerm, setSearchTerm] = useState("");
-  // Filter contacts based on the search term
-  const filteredContacts = contacts?.filter((contact) =>
+  const [showFriendsDrawer, setShowFriendsDrawer] = useState(false);
+
+  // Filter contacts: only show users who are friends OR have active conversations
+  const friendsAndChats = contacts?.filter((contact) => contact.isFriend || contact.conversation !== null) || [];
+
+  // Search filter
+  const filteredContacts = friendsAndChats.filter((contact) =>
     contact?.username?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
     <div
-      className={`w-full border-r h-screen ${
+      className={`w-full border-r h-screen relative overflow-hidden ${
         theme === "dark"
           ? "bg-[rgb(17,27,33)] border-gray-600"
           : "bg-white border-gray-200"
       }`}
     >
+      <FriendsDrawer
+        isOpen={showFriendsDrawer}
+        onClose={() => setShowFriendsDrawer(false)}
+        allUsers={contacts || []}
+        refreshUsers={refreshUsers}
+      />
       <div
         className={`p-4 flex justify-between ${
           theme === "dark" ? "text-white" : "text-gray-800"
         }`}
       >
-        <h2 className="text-xl font-semibold">Chats</h2>
-        <button className="p-2 bg-green-500 text-white rounded-full hover:bg-green-600 transition-colors">
+        <h2 className="text-xl font-semibold">Talkies Chats</h2>
+        <button
+          onClick={() => setShowFriendsDrawer(true)}
+          className="p-2 bg-green-500 text-white rounded-full hover:bg-green-600 transition-colors focus:outline-none"
+          title="Friend Requests"
+        >
           <FaPlus />
         </button>
       </div>
@@ -94,24 +110,53 @@ const ChatList = ({ contacts }) => {
                   </span>
                 )}
               </div>
-              <div className="flex justify-between items-baseline">
-                <p
-                  className={`text-sm ${
-                    theme === "dark" ? "text-gray-400" : "text-gray-500"
-                  } truncate`}
-                >
-                  {contact?.conversation?.lastMessage?.content}
-                </p>
-       {contact?.conversation &&
-        contact?.conversation?.unreadCount > 0 &&   contact?.conversation?.lastMessage?.receiver === user?._id && (
-    <p
-      className={`text-sm font-semibold w-6 h-6 flex items-center justify-center bg-yellow-500 ${
-        theme === "dark" ? "text-gray-800" : "text-gray-500"
-      } rounded-full`}
-    >
-      {contact?.conversation?.unreadCount}
-    </p>
-)}
+              <div className="flex justify-between items-center mt-1">
+                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                  {contact?.conversation?.lastMessage && (
+                    (() => {
+                      console.log("ChatList DEBUG:", {
+                        contact: contact.username,
+                        lastMsgContent: contact.conversation.lastMessage.content,
+                        sender: contact.conversation.lastMessage.sender,
+                        receiver: contact.conversation.lastMessage.receiver,
+                        status: contact.conversation.lastMessage.messageStatus,
+                        userId: user?._id
+                      });
+                      return null;
+                    })()
+                  )}
+                  {contact?.conversation?.lastMessage && 
+                   String(contact.conversation.lastMessage.sender?._id || contact.conversation.lastMessage.sender) === String(user?._id) && (
+                    <span className="flex-shrink-0 flex items-center">
+                      {contact.conversation.lastMessage.messageStatus === "send" && (
+                        <FaCheck size={12} className="text-gray-400" />
+                      )}
+                      {contact.conversation.lastMessage.messageStatus === "delivered" && (
+                        <FaCheckDouble size={12} className="text-gray-400" />
+                      )}
+                      {contact.conversation.lastMessage.messageStatus === "read" && (
+                        <FaCheckDouble size={12} className="drop-shadow-sm" style={{ color: "#34b7f1" }} />
+                      )}
+                    </span>
+                  )}
+                  <p
+                    className={`text-sm ${
+                      theme === "dark" ? "text-gray-400" : "text-gray-500"
+                    } truncate flex-1`}
+                  >
+                    {contact?.conversation?.lastMessage?.content}
+                  </p>
+                </div>
+                {contact?.conversation &&
+                  contact?.conversation?.unreadCount > 0 &&
+                  contact?.conversation?.lastMessage &&
+                  String(contact.conversation.lastMessage.receiver?._id || contact.conversation.lastMessage.receiver) === String(user?._id) && (
+                    <p
+                      className={`text-xs font-semibold w-5 h-5 flex items-center justify-center bg-green-500 text-white rounded-full flex-shrink-0 ml-2`}
+                    >
+                      {contact?.conversation?.unreadCount}
+                    </p>
+                )}
               </div>
             </div>
           </motion.div>

@@ -16,7 +16,15 @@ export default function Layout({
   const selectedContact = useStore((state) => state.selectedContact);
   const setSelectedContact = useStore((state) => state.setSelectedContact);
   const location = useLocation();
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
   const { theme, setTheme } = useThemeStore();
 
   const isUserDetailsPage = location.pathname === "/user-details";
@@ -38,36 +46,42 @@ export default function Layout({
       <div
         className={`flex-1 flex overflow-hidden ${isMobile ? "flex-col" : ""}`}
       >
-        <AnimatePresence initial={false}>
-          {(!selectedContact || !isMobile) && (
-            <motion.div
-              key="chatList"
-              initial={{ x: isMobile ? "-100%" : 0 }}
-              animate={{ x: 0 }}
-              exit={{ x: "-100%" }}
-              transition={{ type: "tween" }}
-              className={`${
-                isUserDetailsPage ? "w-full md:w-2/5" : "w-full md:w-2/5"
-              } h-full ${isMobile ? "pb-16" : ""}`}
-            >
-              {children}
-            </motion.div>
-          )}
-          {(selectedContact || !isMobile) && (
-            <motion.div
-              key="chatWindow"
-              initial={{ x: isMobile ? "100%" : 0 }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "tween" }}
-              className="w-full h-full"
-            >
-              <ChatWindow
-                selectedContact={selectedContact}
-                setSelectedContact={setSelectedContact}
-                isMobile={isMobile}
-              />
-            </motion.div>
+        <AnimatePresence mode="wait">
+          {isMobile ? (
+            !selectedContact ? (
+              <motion.div
+                key="chatList"
+                initial={{ x: "-100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "-100%" }}
+                transition={{ type: "tween" }}
+                className="w-full h-full pb-16"
+              >
+                {children}
+              </motion.div>
+            ) : (
+              <motion.div
+                key="chatWindow"
+                initial={{ x: "100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "100%" }}
+                transition={{ type: "tween" }}
+                className="fixed inset-0 z-50 bg-white h-screen w-screen"
+              >
+                <ChatWindow selectedContact={selectedContact} setSelectedContact={setSelectedContact} />
+              </motion.div>
+            )
+          ) : (
+            <div className="flex flex-1 overflow-hidden">
+              <div className={`${location.pathname === '/' ? 'w-[350px] min-w-[300px]' : 'w-full'} h-full border-r border-gray-200 dark:border-gray-700`}>
+                {children}
+              </div>
+              {location.pathname === '/' && (
+                <div className="flex-1 h-full">
+                  <ChatWindow selectedContact={selectedContact} setSelectedContact={setSelectedContact} />
+                </div>
+              )}
+            </div>
           )}
         </AnimatePresence>
       </div>
@@ -75,7 +89,7 @@ export default function Layout({
 
       {/* Theme Dialog */}
       {isThemeDialogOpen && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-[9999]">
           <div
             className={`${
               theme === "dark"
@@ -118,7 +132,7 @@ export default function Layout({
 
       {/* Status Preview */}
       {isStatusPreviewOpen && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-[9999]">
           {statusPreviewContent}
         </div>
       )}

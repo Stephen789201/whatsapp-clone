@@ -133,6 +133,15 @@ const handleDeleteStatus = () => {
             ) : null}
           </div>
 
+          {/* Caption Overlay */}
+          {currentStatus.caption && (
+            <div className="absolute bottom-20 left-0 right-0 p-6 text-center bg-gradient-to-t from-black/60 to-transparent z-10 pointer-events-none">
+              <p className="text-white text-lg md:text-xl font-medium drop-shadow-lg max-w-2xl mx-auto">
+                {currentStatus.caption}
+              </p>
+            </div>
+          )}
+
           {/* Close button */}
           <button
             className="absolute top-4 right-4 text-white bg-black bg-opacity-50 rounded-full p-3 hover:bg-opacity-70 transition-all z-10"

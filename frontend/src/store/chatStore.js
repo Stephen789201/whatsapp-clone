@@ -1,17 +1,49 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 import axiosInstance from "../services/url.service";
 import { getSocket } from "../services/chat.service";
 
+import useLayoutStore from "./layoutStore";
+import useUserStore from "./useUserStore";
+
 // Zustand store for managing chat-related state and actions
-export const useChatStore = create((set, get) => ({
-  // ======== State Variables ========
-  conversations: [], // List of all conversations
-  currentConversation: null, // Currently selected conversation ID
-  messages: [], // Messages of the current conversation
-  loading: false, // Loader for API calls
-  error: null, // Error holder
-  onlineUsers: new Map(), // userId -> { isOnline, lastSeen }
-  typingUsers: new Map(), // conversationId -> Set of userIds who are typing
+export const useChatStore = create(
+  persist(
+    (set, get) => ({
+      // ======== State Variables ========
+      conversations: [], // List of all conversations
+      currentConversation: null, // Currently selected conversation ID
+      messages: [], // Messages of the current conversation
+      loading: false, // Loader for API calls
+      error: null, // Error holder
+      onlineUsers: new Map(), // userId -> { isOnline, lastSeen }
+      typingUsers: new Map(), // conversationId -> Set of userIds who are typing
+      allUsers: [], // List of all users in the system for starting new chats
+      pendingStatusUpdates: {}, // Cache for incoming real-time status updates (race condition fix)
+      
+      resetChatStore: () => set({
+        conversations: [],
+        currentConversation: null,
+        messages: [],
+        allUsers: [],
+        loading: false,
+        error: null,
+        pendingStatusUpdates: {}
+      }),
+
+      updateMessageStatusInStore: (messageId, messageStatus) => {
+        const targetId = String(messageId);
+        set((state) => {
+          const updatedPending = { ...state.pendingStatusUpdates, [targetId]: messageStatus };
+          const updatedMessages = state.messages.map((msg) =>
+            String(msg._id) === targetId ? { ...msg, messageStatus } : msg
+          );
+          return {
+            pendingStatusUpdates: updatedPending,
+            messages: updatedMessages,
+          };
+        });
+      },
 
   // ======== Socket Event Listeners Setup ========
   initSocketListeners: () => { 
@@ -25,10 +57,36 @@ export const useChatStore = create((set, get) => ({
     socket.off("message_send");
     socket.off("message_error");
     socket.off("message_deleted");
+    socket.off("new_conversation");
+    socket.off("message_status_update");
+    socket.off("messages_read");
 
     // Listen for incoming messages
     socket.on("receive_message", (message) => {
       get().receiveMessage(message);
+    });
+
+    // Listen for new or updated conversations (for the sidebar)
+    socket.on("new_conversation", (conversation) => {
+      console.log("Received new_conversation update:", conversation);
+      set((state) => {
+        const isArray = Array.isArray(state.conversations);
+        const list = isArray ? state.conversations : (state.conversations?.data || []);
+        
+        // Update existing or add new
+        const existingIdx = list.findIndex(c => c._id === conversation._id);
+        let newList;
+        if (existingIdx !== -1) {
+          newList = [...list];
+          newList[existingIdx] = conversation;
+        } else {
+          newList = [conversation, ...list];
+        }
+
+        return {
+          conversations: isArray ? newList : { ...state.conversations, data: newList }
+        };
+      });
     });
 
     // Confirm message delivery
@@ -42,11 +100,8 @@ export const useChatStore = create((set, get) => ({
 
     // Update message read/delivered status
     socket.on("message_status_update", ({ messageId, messageStatus }) => {
-      set((state) => ({
-        messages: state.messages.map((msg) =>
-          msg._id === messageId ? { ...msg, messageStatus } : msg
-        ),
-      }));
+      console.log("Socket message_status_update received:", messageId, messageStatus);
+      get().updateMessageStatusInStore(messageId, messageStatus);
     });
 
     // Handle reactions on messages
@@ -57,14 +112,33 @@ export const useChatStore = create((set, get) => ({
         ),
       }));
     });
+    
+    socket.on("messages_read", ({ messageIds, receiverId }) => {
+      console.log("Socket messages_read received:", messageIds);
+      if (Array.isArray(messageIds)) {
+        messageIds.forEach((id) => {
+          get().updateMessageStatusInStore(id, "read");
+        });
+      }
+    });
   
-    // Remove a message from local state when deleted by sender (real-time sync)
-    socket.on("message_deleted", (deletedMessageId) => {
-  console.log("Message deleted:", deletedMessageId);
-  set((state) => ({
-    messages: state.messages.filter((msg) => msg._id !== deletedMessageId),
-  }));
-});
+    // Remove a message from local state when deleted for me (real-time sync if needed)
+    socket.on("message_deleted", (data) => {
+      const deletedMessageId = typeof data === 'string' ? data : data.messageId;
+      set((state) => ({
+        messages: state.messages.filter((msg) => msg._id !== deletedMessageId),
+      }));
+    });
+
+    // Handle "Delete for Everyone" (Update to placeholder)
+    socket.on("message_deleted_everyone", ({ messageId, updatedMessage }) => {
+      console.log("Message deleted for everyone:", messageId);
+      set((state) => ({
+        messages: state.messages.map((msg) =>
+          msg._id === messageId ? { ...msg, ...updatedMessage } : msg
+        ),
+      }));
+    });
 
     // Handle any message sending error
     socket.on("message_error", (error) => {
@@ -75,55 +149,119 @@ export const useChatStore = create((set, get) => ({
     socket.on("user_typing", ({ userId, conversationId, isTyping }) => {
       set((state) => {
         const newTypingUsers = new Map(state.typingUsers);
-        if (!newTypingUsers.has(conversationId)) {
-          newTypingUsers.set(conversationId, new Set());
-        }
-
-        const typingSet = newTypingUsers.get(conversationId);
+        const convIdStr = String(conversationId);
+        const typingSet = new Set(newTypingUsers.get(convIdStr) || []);
+        
         if (isTyping) {
-          typingSet.add(userId);
+          typingSet.add(String(userId));
         } else {
-          typingSet.delete(userId);
+          typingSet.delete(String(userId));
         }
 
+        newTypingUsers.set(convIdStr, typingSet);
         return { typingUsers: newTypingUsers };
       });
+    });
+
+    // Listen for user profile updates (name/avatar change)
+    socket.on("user_updated", (updatedUser) => {
+      console.log("Received user_updated:", updatedUser);
+
+      // 1. Update the user profile if it's the current user
+      const currentUser = useUserStore.getState().user;
+      if (currentUser && String(currentUser._id) === String(updatedUser._id)) {
+        console.log("Updating current user profile state");
+        useUserStore.getState().setUser({ ...currentUser, ...updatedUser });
+      }
+
+      // 2. Update conversations list
+      set((state) => {
+        const isArray = Array.isArray(state.conversations);
+        const list = isArray ? state.conversations : (state.conversations?.data || []);
+        
+        const updatedList = list.map((conv) => {
+          const updatedParticipants = conv.participants.map((p) => 
+            String(p._id || p) === String(updatedUser._id) 
+              ? { ...p, ...updatedUser } 
+              : p
+          );
+          return { ...conv, participants: updatedParticipants };
+        });
+
+        console.log("Updating local conversation state with new user info");
+        return {
+          conversations: isArray ? updatedList : { ...state.conversations, data: updatedList }
+        };
+      });
+
+      // 3. Update active chat header if this user is selected
+      const { selectedContact, setSelectedContact } = useLayoutStore.getState();
+      if (selectedContact && String(selectedContact._id) === String(updatedUser._id)) {
+        console.log("Updating active chat header for:", updatedUser.username);
+        setSelectedContact({ ...selectedContact, ...updatedUser });
+      }
     });
 
     // Track user's online/offline status
     socket.on("user_status", ({ userId, isOnline, lastSeen }) => {
       set((state) => {
         const newOnlineUsers = new Map(state.onlineUsers);
-        newOnlineUsers.set(userId, { isOnline, lastSeen });
+        newOnlineUsers.set(String(userId), { isOnline, lastSeen });
         return { onlineUsers: newOnlineUsers };
       });
     });
 
-    // Emit status check for all users in the conversation list
+    // Initial status check for all participants
     const { conversations } = get();
-    if (conversations?.data?.length > 0) {
-      conversations.data.forEach((conv) => {
-        const otherUser = conv.participants.find(
-          (p) => p._id !== get().currentUser?._id
-        );
-        if (otherUser?._id) {
-          socket.emit("get_user_status", otherUser._id, (status) => {
-            set((state) => {
-              const newOnlineUsers = new Map(state.onlineUsers);
-              newOnlineUsers.set(status.userId, {
-                isOnline: status.isOnline,
-                lastSeen: status.lastSeen,
-              });
-              return { onlineUsers: newOnlineUsers };
-            });
-          });
-        }
-      });
-    }
+    const list = Array.isArray(conversations) ? conversations : (conversations?.data || []);
+    list.forEach((conv) => {
+      const otherUser = conv.participants?.find(
+        (p) => String(p._id || p) !== String(get().currentUser?._id)
+      );
+      if (otherUser) {
+        socket.emit("get_user_status", otherUser._id || otherUser);
+      }
+    });
+  },
+
+  refreshUserStatuses: () => {
+    const socket = getSocket();
+    if (!socket) return;
+
+    const { conversations } = get();
+    const list = Array.isArray(conversations) ? conversations : (conversations?.data || []);
+    
+    list.forEach((conv) => {
+      const otherUser = conv.participants?.find(
+        (p) => String(p._id || p) !== String(get().currentUser?._id)
+      );
+      if (otherUser) {
+        socket.emit("get_user_status", otherUser._id || otherUser);
+      }
+    });
   },
 
   // ======== Set Current User ========
   setCurrentUser: (user) => set({ currentUser: user }),
+
+  // ======== Fetch All Users for New Chat ========
+  fetchAllUsers: async () => {
+    set({ loading: true, error: null });
+    try {
+      const { data } = await axiosInstance.get("/users/other-users-list");
+      // The backend returns an array of users with optional conversation info
+      const users = data.data || data || [];
+      set({ allUsers: users, loading: false });
+      return users;
+    } catch (error) {
+      console.error("Error fetching all users:", error);
+      set({
+        error: error.response?.data?.message || error.message,
+        loading: false,
+      });
+      return [];
+    }
+  },
 
   // ======== Fetch Conversations from API ========
   fetchConversations: async () => {
@@ -134,6 +272,9 @@ export const useChatStore = create((set, get) => ({
 
       // Initialize socket after fetching conversations
       get().initSocketListeners();
+      
+      // Refresh statuses
+      get().refreshUserStatuses();
       return data;
     } catch (error) {
       set({
@@ -145,7 +286,7 @@ export const useChatStore = create((set, get) => ({
   },
 
   // ======== Fetch Messages for a Conversation ========
-  fetchMessages: async (conversationId) => {
+  fetchMessages: async (conversationId, conversationPartnerId) => {
     if (!conversationId) return;
 
     set({ loading: true, error: null });
@@ -155,16 +296,16 @@ export const useChatStore = create((set, get) => ({
       );
 
       const messageArray = data.data || data || [];
+      const userId = get().currentUser?._id;
 
       set({
-        messages: messageArray,
+        messages: messageArray.filter(msg => !msg.deletedFor?.some(id => String(id) === String(userId))),
         currentConversation: conversationId,
         loading: false,
       });
 
-      // Mark unread messages as read
-      const { markMessagesAsRead } = get();
-      markMessagesAsRead();
+      // We no longer mark as read here automatically. 
+      // It is handled by the focus/visibility listeners in ChatWindow.
 
       return messageArray;
     } catch (error) {
@@ -212,15 +353,23 @@ export const useChatStore = create((set, get) => ({
       receiver: { _id: receiverId },
       conversation: conversationId,
       imageOrVideoUrl:
-        media && typeof media !== "string" ? URL.createObjectURL(media) : null,
+        media && typeof media !== "string" && !media.type.startsWith("audio") && !media.type.includes("webm") 
+          ? URL.createObjectURL(media) 
+          : null,
+      audioUrl:
+        media && typeof media !== "string" && (media.type.startsWith("audio") || media.type.includes("webm"))
+          ? URL.createObjectURL(media)
+          : null,
       content: content,
       contentType: media
         ? media.type.startsWith("image")
           ? "image"
-          : "video"
+          : (media.type.startsWith("audio") || media.type.includes("webm"))
+            ? "audio"
+            : "video"
         : "text",
       createdAt: new Date().toISOString(),
-      messageStatus,
+      messageStatus: messageStatus || "send",
     };
 
     set((state) => ({
@@ -236,13 +385,27 @@ export const useChatStore = create((set, get) => ({
       );
       console.log(data)
       const messageData = data.data || data;
+      const realId = String(messageData._id);
+
+      // Check if a socket event already delivered or read this message
+      const pendingStatus = get().pendingStatusUpdates[realId];
+      const finalMessage = pendingStatus
+        ? { ...messageData, messageStatus: pendingStatus }
+        : messageData;
 
       // Replace optimistic message with real one
-      set((state) => ({
-        messages: state.messages.map((msg) =>
-          msg._id === tempId ? messageData : msg
-        ),
-      }));
+      set((state) => {
+        const newPending = { ...state.pendingStatusUpdates };
+        delete newPending[realId];
+
+        return {
+          messages: state.messages.map((msg) =>
+            msg._id === tempId ? finalMessage : msg
+          ),
+          pendingStatusUpdates: newPending,
+          currentConversation: messageData.conversation
+        };
+      });
 
       // Notify other user via socket
       if (socket) {
@@ -277,9 +440,21 @@ export const useChatStore = create((set, get) => ({
         messages: [...state.messages, message],
       }));
 
-      // Automatically mark as read if viewing the conversation
-      if (message.receiver?._id === currentUser?._id) {
-        get().markMessagesAsRead();
+      // Automatically mark as read if actively viewing this specific conversation
+      const receiverId = message.receiver?._id || message.receiver;
+      const senderId = message.sender?._id || message.sender;
+      const activeContact = useLayoutStore.getState().selectedContact;
+      const activeTab = useLayoutStore.getState().activeTab;
+      
+      const isViewingThisChat = 
+        window.location.pathname === "/" &&
+        activeTab === "chats" &&
+        activeContact &&
+        String(activeContact._id) === String(senderId) &&
+        document.visibilityState !== "hidden";
+
+      if (String(receiverId) === String(currentUser?._id) && isViewingThisChat) {
+        get().markMessagesAsRead(senderId, [message._id]);
       }
     }
 
@@ -291,7 +466,7 @@ export const useChatStore = create((set, get) => ({
             ...conv,
             lastMessage: message,
             unreadCount:
-              message.receiver?._id === currentUser?._id
+              String(message.receiver?._id) === String(currentUser?._id)
                 ? (conv.unreadCount || 0) + 1
                 : conv.unreadCount || 0,
           };
@@ -309,38 +484,46 @@ export const useChatStore = create((set, get) => ({
   },
 
   // ======== Mark Unread Messages as Read ========
-  markMessagesAsRead: async () => {
+  markMessagesAsRead: async (conversationPartnerId, specificMessageIds = null) => {
     const { messages, currentUser } = get();
-    if (!messages?.length || !currentUser) return;
+    if (!currentUser) return;
+    
+    // Mark messages as read
 
-    const unreadIds = messages
-      .filter(
-        (msg) =>
-          msg.messageStatus !== "read" && msg.receiver?._id === currentUser?._id
-      )
-      .map((msg) => msg._id)
-      .filter(Boolean);
+    let unreadIds = [];
+    if (specificMessageIds) {
+      unreadIds = specificMessageIds.filter(Boolean);
+    } else if (messages?.length) {
+      unreadIds = messages
+        .filter(
+          (msg) =>
+            msg.messageStatus !== "read" &&
+            String(msg.receiver?._id || msg.receiver) === String(currentUser?._id)
+        )
+        .map((msg) => msg._id)
+        .filter(Boolean);
+    }
 
     if (unreadIds.length === 0) return;
 
     try {
-      const { data } = await axiosInstance.put("/chats/messages/read", {
+      await axiosInstance.put("/chats/messages/read", {
         messageIds: unreadIds,
       });
-      console.log("Marked as read", data);
 
+      const stringUnreadIds = unreadIds.map(String);
       set((state) => ({
         messages: state.messages.map((msg) =>
-          unreadIds.includes(msg._id) ? { ...msg, messageStatus: "read" } : msg
+          stringUnreadIds.includes(String(msg._id)) ? { ...msg, messageStatus: "read" } : msg
         ),
       }));
 
-      // Emit update to sender
+      // Emit update to sender (the partner)
       const socket = getSocket();
-      if (socket) {
+      if (socket && conversationPartnerId) {
         socket.emit("message_read", {
           messageIds: unreadIds,
-          senderId: messages[0]?.sender?._id,
+          senderId: conversationPartnerId,
         });
       }
     } catch (error) {
@@ -349,14 +532,36 @@ export const useChatStore = create((set, get) => ({
   },
 
   // Delete a message by ID
-deleteMessage: async (messageId) => {
+deleteMessage: async (messageId, deleteType = 'everyone') => {
   try {
     // Make API call to delete the message
-    await axiosInstance.delete(`/chats/messages/${messageId}`);
+    await axiosInstance.delete(`/chats/messages/${messageId}`, { 
+      data: { deleteType } 
+    });
 
-    // Optimistically remove from local state
+    // Optimistically update local state
     set((state) => ({
-      messages: state.messages.filter((msg) => msg._id !== messageId),
+      messages: state.messages.map((msg) => {
+        if (msg._id === messageId) {
+          if (deleteType === 'everyone') {
+            return { 
+              ...msg, 
+              isDeleted: true, 
+              content: "🚫 This message was deleted", 
+              contentType: "text",
+              audioUrl: null,
+              imageOrVideoUrl: null,
+              reactions: []
+            };
+          }
+          // For 'me', we filter it out in the next step
+          return msg;
+        }
+        return msg;
+      }).filter(msg => {
+        if (msg._id === messageId && deleteType === 'me') return false;
+        return true;
+      }),
     }));
 
     return true;
@@ -414,24 +619,42 @@ deleteMessage: async (messageId) => {
     const { typingUsers, currentConversation } = get();
     if (
       !currentConversation ||
-      !typingUsers.has(currentConversation) ||
+      !typingUsers.has(String(currentConversation)) ||
       !userId
     ) {
       return false;
     }
-    return typingUsers.get(currentConversation).has(userId);
+    return typingUsers.get(String(currentConversation)).has(String(userId));
   },
 
   isUserOnline: (userId) => {
     if (!userId) return false;
     const { onlineUsers } = get();
-    return onlineUsers.get(userId)?.isOnline || false;
+    return onlineUsers.get(String(userId))?.isOnline || false;
   },
 
   getUserLastSeen: (userId) => {
     if (!userId) return null;
     const { onlineUsers } = get();
-    return onlineUsers.get(userId)?.lastSeen || null;
+    return onlineUsers.get(String(userId))?.lastSeen || null;
+  },
+
+  // ======== Fetch/Refresh User Status ========
+  fetchUserStatus: (userId) => {
+    if (!userId) return;
+    const socket = getSocket();
+    if (socket) {
+      socket.emit("get_user_status", userId, (status) => {
+        set((state) => {
+          const newOnlineUsers = new Map(state.onlineUsers);
+          newOnlineUsers.set(String(status.userId), {
+            isOnline: status.isOnline,
+            lastSeen: status.lastSeen,
+          });
+          return { onlineUsers: newOnlineUsers };
+        });
+      });
+    }
   },
 
   // ======== Cleanup Store ========
@@ -445,4 +668,13 @@ deleteMessage: async (messageId) => {
       typingUsers: new Map(),
     });
   },
-}));
+    }),
+    {
+      name: "chat-storage",
+      getStorage: () => localStorage,
+      partialize: (state) => ({
+        conversations: state.conversations,
+      }),
+    }
+  )
+);

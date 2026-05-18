@@ -61,7 +61,8 @@ const useStatusStore = create((set, get) => ({
   fetchStatuses: async () => {
     set({ loading: true, error: null });
     try {
-      const { data } = await axiosInstance.get("/status");
+      // Add timestamp to bypass browser cache
+      const { data } = await axiosInstance.get(`/status?t=${Date.now()}`);
       set({ statuses: data.data || [], loading: false });
     } catch (error) {
       console.error("Error fetching statuses:", error);
@@ -78,6 +79,9 @@ const useStatusStore = create((set, get) => ({
       // ✅ FIXED: Use "file" instead of "media" to match backend
       if (statusData.file) {
         formData.append("media", statusData.file);
+      }
+      if (statusData.caption) {
+        formData.append("caption", statusData.caption);
       }
       if (statusData.content?.trim()) {
         formData.append("content", statusData.content);
@@ -146,13 +150,20 @@ const useStatusStore = create((set, get) => ({
   // Helper functions for grouped statuses
   getGroupedStatuses: (userId) => {
     const { statuses } = get();
+    const currentUserId = String(userId);
+
     return statuses.reduce((acc, status) => {
-      const statusUserId = status.user._id;
+      // Ensure we have a valid user object and ID string
+      const statusUser = status.user;
+      const statusUserId = String(statusUser?._id || statusUser || "");
+      
+      if (!statusUserId) return acc;
+
       if (!acc[statusUserId]) {
         acc[statusUserId] = {
           id: statusUserId,
-          name: status.user.username,
-          avatar: status?.user?.profilePicture,
+          name: statusUser?.username || "Unknown",
+          avatar: statusUser?.profilePicture,
           statuses: [],
         };
       }
@@ -160,6 +171,7 @@ const useStatusStore = create((set, get) => ({
         id: status._id,
         media: status.content,
         contentType: status.contentType,
+        caption: status.caption,
         timestamp: status.createdAt,
         viewers: status.viewers,
       });
@@ -169,13 +181,15 @@ const useStatusStore = create((set, get) => ({
 
   getUserStatuses: (userId) => {
     const groupedStatuses = get().getGroupedStatuses(userId);
-    return userId ? groupedStatuses[userId] : null;
+    const idStr = String(userId);
+    return userId ? groupedStatuses[idStr] : null;
   },
 
   getOtherStatuses: (userId) => {
     const groupedStatuses = get().getGroupedStatuses(userId);
+    const idStr = String(userId);
     return Object.values(groupedStatuses).filter(
-      (contact) => contact.id !== userId
+      (contact) => String(contact.id) !== idStr
     );
   },
 

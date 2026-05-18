@@ -11,6 +11,9 @@ import {
   FaImage,
   FaFile,
   FaTimes,
+  FaMicrophone,
+  FaTrash,
+  FaCheck,
 } from "react-icons/fa";
 import MessageBubble from "./MessageBubble";
 import EmojiPicker from "emoji-picker-react";
@@ -38,6 +41,13 @@ export default function ChatWindow({ selectedContact, setSelectedContact }) {
   const emojiPickerRef = useRef(null);
   const fileInputRef = useRef(null);
 
+  // Voice recording state & refs
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const recordingTimerRef = useRef(null);
+
   const { theme } = useThemeStore();
   const { user } = useUserStore();
   const socket = getSocket();
@@ -55,6 +65,7 @@ export default function ChatWindow({ selectedContact, setSelectedContact }) {
     conversations,
     addReaction,
     deleteMessage,
+    markMessagesAsRead,
   } = useChatStore();
   const { initiateCall } = useVideoCallStore();
 
@@ -64,17 +75,29 @@ export default function ChatWindow({ selectedContact, setSelectedContact }) {
   const isTyping = isUserTyping(selectedContact?._id);
 
   useEffect(() => {
-    if (selectedContact?._id && conversations?.data?.length > 0) {
-      const conversation = conversations.data.find((conv) =>
-        conv.participants.some(
-          (participant) => participant._id === selectedContact._id
-        )
-      );
-      if (conversation?._id) {
-        fetchMessages(conversation._id);
+    if (selectedContact?._id) {
+      const list = conversations?.data || conversations || [];
+      if (list.length > 0) {
+        const conversation = list.find((conv) =>
+          conv.participants.some(
+            (participant) => participant._id === selectedContact._id
+          )
+        );
+        const activeConversationId = conversation?._id || null;
+        const loadedConversationId = useChatStore.getState().currentConversation;
+
+        if (activeConversationId) {
+          if (loadedConversationId !== activeConversationId) {
+            fetchMessages(activeConversationId);
+          }
+        } else {
+          if (loadedConversationId !== null) {
+            useChatStore.setState({ messages: [], currentConversation: null });
+          }
+        }
       }
     }
-  }, [selectedContact, conversations]);
+  }, [selectedContact, conversations, fetchMessages]);
 
   useEffect(() => {
     fetchConversations();
@@ -94,13 +117,50 @@ export default function ChatWindow({ selectedContact, setSelectedContact }) {
   //   }
   // }, [selectedContact, conversations]);
 
+  const messagesLengthRef = useRef(messages.length);
+  const currentConversationRef = useRef(null);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
   };
 
   useEffect(() => {
-    scrollToBottom();
+    const prevLength = messagesLengthRef.current;
+    const currentConv = useChatStore.getState().currentConversation;
+    const prevConv = currentConversationRef.current;
+
+    // Scroll only if loading a new conversation or a new message is appended (sent/received)
+    if (currentConv !== prevConv || messages.length > prevLength) {
+      scrollToBottom();
+    }
+
+    // Keep refs up-to-date
+    messagesLengthRef.current = messages.length;
+    currentConversationRef.current = currentConv;
   }, [messages]);
+
+  // Mark messages as read when viewing the chat
+  useEffect(() => {
+    const checkAndMarkRead = () => {
+      if (selectedContact && messages.length > 0) {
+        const hasUnread = messages.some(
+          (msg) => msg.messageStatus !== "read" && String(msg.receiver?._id || msg.receiver) === String(user?._id)
+        );
+        if (hasUnread && document.visibilityState !== "hidden") {
+          markMessagesAsRead(selectedContact._id);
+        }
+      }
+    };
+
+    checkAndMarkRead();
+
+    window.addEventListener("focus", checkAndMarkRead);
+    document.addEventListener("visibilitychange", checkAndMarkRead);
+    return () => {
+      window.removeEventListener("focus", checkAndMarkRead);
+      document.removeEventListener("visibilitychange", checkAndMarkRead);
+    };
+  }, [selectedContact, messages, user, markMessagesAsRead]);
 
   useEffect(() => {
     if (message && selectedContact) {
@@ -172,6 +232,92 @@ export default function ChatWindow({ selectedContact, setSelectedContact }) {
       console.error("Failed to send message:", error);
     }
   };
+
+  // Voice recording handlers
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunksRef.current = [];
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      mediaRecorderRef.current = mediaRecorder;
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        // Stop all audio tracks to release microphone
+        stream.getTracks().forEach((track) => track.stop());
+
+        if (audioChunksRef.current.length === 0) return;
+
+        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        const audioFile = new File([audioBlob], `voice-message-${Date.now()}.webm`, {
+          type: "audio/webm",
+        });
+
+        // Automatically send the voice message
+        try {
+          const formData = new FormData();
+          formData.append("senderId", user._id);
+          formData.append("receiverId", selectedContact._id);
+          
+          const onlineStatus = isUserOnline(selectedContact?._id);
+          formData.append("messageStatus", onlineStatus ? "delivered" : "send");
+          formData.append("media", audioFile);
+
+          await sendMessage(formData);
+        } catch (err) {
+          console.error("Failed to send recorded audio:", err);
+        }
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingSeconds(0);
+
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingSeconds((prev) => prev + 1);
+      }, 1000);
+    } catch (err) {
+      console.error("Failed to access microphone:", err);
+      alert("Please grant microphone permission to record voice messages.");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+    clearInterval(recordingTimerRef.current);
+  };
+
+  const cancelRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.ondataavailable = null;
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+    clearInterval(recordingTimerRef.current);
+    audioChunksRef.current = [];
+  };
+
+  const formatDuration = (sec) => {
+    const mins = Math.floor(sec / 60);
+    const secs = sec % 60;
+    return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
+  };
+
+  useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleVideoCall = () => {
     if (selectedContact && online) {
@@ -320,11 +466,17 @@ export default function ChatWindow({ selectedContact, setSelectedContact }) {
             </h2>
 
             {isTyping ? (
-              <div>Typing...</div>
+              <div className="text-green-500 text-sm font-medium animate-pulse drop-shadow-[0_0_5px_rgba(34,197,94,0.8)]">
+                Typing...
+              </div>
             ) : (
               <p
                 className={`text-sm ${
-                  theme === "dark" ? "text-gray-400" : "text-gray-500"
+                  online
+                    ? "text-green-500 font-medium drop-shadow-[0_0_5px_rgba(34,197,94,0.8)]"
+                    : theme === "dark"
+                    ? "text-gray-400"
+                    : "text-gray-500"
                 }`}
               >
                 {online
@@ -359,12 +511,7 @@ export default function ChatWindow({ selectedContact, setSelectedContact }) {
           {Object.entries(groupedMessages).map(([date, msgs]) => (
             <React.Fragment key={date}>
               {renderDateSeparator(new Date(date))}
-              {msgs
-                .filter(
-                  (msg) =>
-                    msg.conversation === selectedContact?.conversation?._id
-                )
-                .map((msg) => (
+              {msgs.map((msg) => (
                   <MessageBubble
                     key={msg._id || msg.tempId}
                     message={msg}
@@ -411,97 +558,134 @@ export default function ChatWindow({ selectedContact, setSelectedContact }) {
             theme === "dark" ? "bg-[#303430]" : "bg-white"
           } flex items-center space-x-2`}
         >
-          <button
-            className="focus:outline-none"
-            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-          >
-            <FaSmile
-              className={`h-6 w-6 ${
-                theme === "dark" ? "text-gray-400" : "text-gray-500"
-              }`}
-            />
-          </button>
-          {showEmojiPicker && (
-            <div
-              ref={emojiPickerRef}
-              className="absolute left-0 bottom-16 z-50"
-            >
-              <EmojiPicker
-                onEmojiClick={(emojiObject) => {
-                  setMessage((prev) => prev + emojiObject.emoji);
-                  setShowEmojiPicker(false);
-                }}
-                theme={theme}
-              />
-            </div>
-          )}
-          <div className="relative">
-            <button
-              className="focus:outline-none"
-              onClick={() => setShowFileMenu(!showFileMenu)}
-            >
-              <FaPaperclip
-                className={`h-6 w-6 ${
-                  theme === "dark" ? "text-gray-400" : "text-gray-500"
-                }`}
-              />
-            </button>
-
-            {showFileMenu && (
-              <div
-                className={`absolute bottom-full left-0 mb-2 ${
-                  theme === "dark" ? "bg-gray-700" : "bg-white"
-                } rounded-lg shadow-lg`}
-              >
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  className="hidden"
-                  accept="image/*,video/*,audio/*,application/*"
-                />
+          {isRecording ? (
+            <div className="flex-grow flex items-center justify-between px-4 py-2 bg-red-50/10 dark:bg-red-900/10 rounded-full border border-red-500/20 text-red-500 animate-pulse">
+              <div className="flex items-center space-x-2">
+                <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping" />
+                <span className="font-medium text-sm">Recording Voice...</span>
+                <span className="text-xs opacity-80 font-mono">{formatDuration(recordingSeconds)}</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                {/* Cancel Button */}
                 <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`
-    flex items-center px-4 py-2 w-full transition-colors
-    hover:bg-gray-100
-    ${theme === "dark" ? "hover:bg-gray-500" : "hover:bg-gray-100"}
-  `}
+                  onClick={cancelRecording}
+                  className="p-1.5 hover:bg-red-500/20 rounded-full transition-colors focus:outline-none"
+                  title="Discard recording"
                 >
-                  <FaImage className="mr-2" /> Image/Video
+                  <FaTrash className="h-4 w-4 text-red-500" />
                 </button>
+                {/* Stop & Send Button */}
                 <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`
-    flex items-center px-4 py-2 w-full transition-colors
-    hover:bg-gray-100
-    ${theme === "dark" ? "hover:bg-gray-500" : "hover:bg-gray-100"}
-  `}
+                  onClick={stopRecording}
+                  className="p-1.5 hover:bg-green-500/20 rounded-full transition-colors focus:outline-none"
+                  title="Send recording"
                 >
-                  <FaFile className="mr-2" /> Document
+                  <FaCheck className="h-4 w-4 text-green-500" />
                 </button>
               </div>
-            )}
-          </div>
-          <input
-            type="text"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyPress={(e) => {
-              if (e.key === "Enter") {
-                handleSendMessage();
-              }
-            }}
-            placeholder="Type a message"
-            className={`flex-grow px-4 py-2 border rounded-full focus:outline-none focus:ring-2 focus:ring-green-500 ${
-              theme === "dark"
-                ? "bg-gray-700 text-white border-gray-600"
-                : "bg-white text-black border-gray-300"
-            }`}
-          />
-          <button className="focus:outline-none" onClick={handleSendMessage}>
-            <FaPaperPlane className="h-6 w-6 text-green-500" />
-          </button>
+            </div>
+          ) : (
+            <>
+              <button
+                className="focus:outline-none"
+                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              >
+                <FaSmile
+                  className={`h-6 w-6 ${
+                    theme === "dark" ? "text-gray-400" : "text-gray-500"
+                  }`}
+                />
+              </button>
+              {showEmojiPicker && (
+                <div
+                  ref={emojiPickerRef}
+                  className="absolute left-0 bottom-16 z-50"
+                >
+                  <EmojiPicker
+                    onEmojiClick={(emojiObject) => {
+                      setMessage((prev) => prev + emojiObject.emoji);
+                      setShowEmojiPicker(false);
+                    }}
+                    theme={theme}
+                  />
+                </div>
+              )}
+              <div className="relative">
+                <button
+                  className="focus:outline-none"
+                  onClick={() => setShowFileMenu(!showFileMenu)}
+                >
+                  <FaPaperclip
+                    className={`h-6 w-6 ${
+                      theme === "dark" ? "text-gray-400" : "text-gray-500"
+                    }`}
+                  />
+                </button>
+
+                {showFileMenu && (
+                  <div
+                    className={`absolute bottom-full left-0 mb-2 ${
+                      theme === "dark" ? "bg-gray-700" : "bg-white"
+                    } rounded-lg shadow-lg`}
+                  >
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileChange}
+                      className="hidden"
+                      accept="image/*,video/*,audio/*,application/*"
+                    />
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className={`
+        flex items-center px-4 py-2 w-full transition-colors
+        hover:bg-gray-100
+        ${theme === "dark" ? "hover:bg-gray-500" : "hover:bg-gray-100"}
+      `}
+                    >
+                      <FaImage className="mr-2" /> Image/Video
+                    </button>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className={`
+        flex items-center px-4 py-2 w-full transition-colors
+        hover:bg-gray-100
+        ${theme === "dark" ? "hover:bg-gray-500" : "hover:bg-gray-100"}
+      `}
+                    >
+                      <FaFile className="mr-2" /> Document
+                    </button>
+                  </div>
+                )}
+              </div>
+              <input
+                type="text"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === "Enter") {
+                    handleSendMessage();
+                  }
+                }}
+                placeholder="Type a message"
+                className={`flex-grow px-4 py-2 border rounded-full focus:outline-none focus:ring-2 focus:ring-green-500 ${
+                  theme === "dark"
+                    ? "bg-gray-700 text-white border-gray-600"
+                    : "bg-white text-black border-gray-300"
+                }`}
+              />
+              <button
+                className="focus:outline-none"
+                onClick={message.trim() || selectedFile ? handleSendMessage : startRecording}
+              >
+                {message.trim() || selectedFile ? (
+                  <FaPaperPlane className="h-6 w-6 text-green-500 hover:scale-105 transition-transform" />
+                ) : (
+                  <FaMicrophone className="h-6 w-6 text-green-500 hover:scale-105 transition-transform" />
+                )}
+              </button>
+            </>
+          )}
         </div>
       </div>
 

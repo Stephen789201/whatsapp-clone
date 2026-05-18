@@ -7,6 +7,7 @@ import { FaCheck, FaCheckDouble } from "react-icons/fa";
 import { RxCross2 } from "react-icons/rx";
 import { HiDotsVertical } from "react-icons/hi";
 import { FaTrashAlt, FaRegCopy } from "react-icons/fa";
+import VoiceMessage from "./VoiceMessage";
 
 
 const MessageBubble = ({ message, theme, onReact, currentUser,deleteMessage }) => {
@@ -83,6 +84,14 @@ const optionsRef = useRef(null);
            </div>
          )}
 
+          {message.contentType === "audio" && (
+            <VoiceMessage
+              audioUrl={message.audioUrl}
+              theme={theme}
+              isUserMessage={isUserMessage}
+            />
+          )}
+
         </div>
                   <div className="self-end flex items-center justify-end gap-1 text-xs opacity-60 mt-2 ml-2">
             <span>{format(new Date(message.createdAt), "HH:mm")}</span>
@@ -93,7 +102,7 @@ const optionsRef = useRef(null);
                   <FaCheckDouble size={12} />
                 )}
                 {message.messageStatus === "read" && (
-                  <FaCheckDouble size={12} className="text-blue-900" />
+                  <FaCheckDouble size={12} className="drop-shadow-sm" style={{ color: "#34b7f1" }} />
                 )}
               </>
             )}
@@ -137,9 +146,13 @@ const optionsRef = useRef(null);
         {showReactions && (
           <div
             ref={reactionsMenuRef}
-            className={`absolute -top-8 ${
-              isUserMessage ? "left-0" : "left-36"
-            } transform -translate-x-1/2 flex items-center bg-[#202c33]/90 rounded-full px-2 py-1.5 gap-1 shadow-lg z-50`}
+            className={`absolute -top-14 ${
+              isUserMessage ? "right-0" : "left-0"
+            } flex items-center rounded-full px-2.5 py-1.5 gap-1.5 shadow-2xl z-50 border transition-all duration-200 scale-100 origin-bottom ${
+              theme === "dark"
+                ? "bg-[#233138] border-[#2f3b43] text-white"
+                : "bg-white border-gray-200 text-black"
+            }`}
           >
             {quickReactions.map((emoji, index) => (
               <button
@@ -179,18 +192,24 @@ const optionsRef = useRef(null);
 
         {message.reactions && message.reactions.length > 0 && (
           <div
-            className={`absolute -bottom-5 ${
-              isUserMessage ? "right-2" : "left-2"
-            }
-                        ${
-                          theme === "dark" ? "bg-[#2a3942]" : "bg-gray-200"
-                        } rounded-full px-2 py-1 shadow-md`}
+            className={`absolute -bottom-2.5 ${
+              isUserMessage ? "left-4" : "right-4"
+            } flex items-center justify-center gap-0.5 rounded-full px-1.5 py-0.5 shadow-md border text-xs z-10 transition-all ${
+              theme === "dark" 
+                ? "bg-[#202c33] border-[#111b21] text-white" 
+                : "bg-white border-gray-200 text-gray-800"
+            }`}
           >
             {message.reactions.map((reaction, index) => (
-              <span key={index} className="mr-1">
+              <span key={index} className="flex items-center justify-center">
                 {reaction.emoji}
               </span>
             ))}
+            {message.reactions.length > 1 && (
+              <span className="text-[10px] ml-0.5 opacity-80">
+                {message.reactions.length}
+              </span>
+            )}
           </div>
         )}
 

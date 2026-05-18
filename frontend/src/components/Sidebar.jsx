@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Link, useLocation } from "react-router-dom";
 import { FaWhatsapp, FaUser, FaCog, FaUserCircle } from "react-icons/fa";
-import { MdRadioButtonChecked } from "react-icons/md"; // New icon for status
+import { MdDonutLarge } from "react-icons/md"; // Status icon
 import useStore from "../store/layoutStore";
 import userStore from "../store/useUserStore";
 import useThemeStore from "../store/themeStore";
@@ -46,15 +46,13 @@ const Sidebar = () => {
           activeTab === "chats" && "bg-gray-300 shadow-sm p-2 rounded-full"
         } focus:outline-none`}
       >
-        <FaWhatsapp
-          className={`h-6 w-6 ${
+        <img
+          src="/logo.png"
+          alt="Talkies"
+          className={`h-8 w-8 object-cover rounded-full ${
             activeTab === "chats"
-              ? theme === "dark"
-                ? "text-gray-800 "
-                : ""
-              : theme === "dark"
-              ? "text-gray-300"
-              : "text-gray-800"
+              ? ""
+              : "opacity-60 grayscale hover:opacity-100 hover:grayscale-0 transition-all"
           }`}
         />
       </Link>
@@ -64,7 +62,7 @@ const Sidebar = () => {
           activeTab === "status" && "bg-gray-300 shadow-sm p-2 rounded-full"
         }  focus:outline-none`}
       >
-        <MdRadioButtonChecked
+        <MdDonutLarge
           className={`h-6 w-6 ${
             activeTab === "status"
               ? theme === "dark"

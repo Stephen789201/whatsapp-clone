@@ -195,7 +195,7 @@ const Login = () => {
         const user = response.data?.user;
         if (user?.username && user?.profilePicture) {
           setUser(user);
-          toast.success("Welcome back on WhatsApp");
+          toast.success("Welcome back to Talkies");
           navigate("/");
           resetLoginState();
         } else {
@@ -229,7 +229,7 @@ const Login = () => {
         formData.append("profilePicture", selectedAvatar);
       }
       await updateUserProfile(formData);
-      toast.success("welcome back on whatsapp");
+      toast.success("Welcome back to Talkies");
       navigate("/");
       resetLoginState();
     } catch (error) {
@@ -297,14 +297,14 @@ const Login = () => {
           }}
           className="w-24 h-24 bg-green-500 rounded-full mx-auto mb-6 flex items-center justify-center"
         >
-          <FaWhatsapp className="w-16 h-16 text-white" />
+          <img src="/logo.png" className="w-full h-full object-cover rounded-full" alt="Talkies" />
         </motion.div>
         <h1
           className={`text-3xl font-bold text-center mb-6 ${
             theme === "dark" ? "text-white" : "text-gray-800"
           }`}
         >
-          WhatsApp Login
+          Talkies Login
         </h1>
 
         <ProgressBar />

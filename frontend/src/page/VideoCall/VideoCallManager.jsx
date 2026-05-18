@@ -11,7 +11,7 @@ const VideoCallManager = ({ socket }) => {
   const { user } = useUserStore()
 
   useEffect(() => {
-    if (!socket) return
+    if (!socket || !user) return
 
     // Handle incoming call
     const handleIncomingCall = ({ callerId, callerName, callerAvatar, callType, callId }) => {
@@ -44,7 +44,7 @@ const VideoCallManager = ({ socket }) => {
       socket.off("incoming_call", handleIncomingCall)
       socket.off("call_failed", handleCallFailed)
     }
-  }, [socket, setIncomingCall, setCallType, setCallModalOpen, setCallStatus, endCall])
+  }, [socket, user, setIncomingCall, setCallType, setCallModalOpen, setCallStatus, endCall])
 
   // Memoized function to initiate a call
   const initiateCall = useCallback(
@@ -90,9 +90,7 @@ const VideoCallManager = ({ socket }) => {
       console.log("Call initiated, currentCall set to:", callData)
     },
     [
-      user._id,
-      user.username,
-      user.profilePicture,
+      user,
       socket,
       setCurrentCall,
       setCallType,
@@ -103,8 +101,11 @@ const VideoCallManager = ({ socket }) => {
 
   // Expose the initiateCall function to the store
   useEffect(() => {
+    if (!user) return;
     useVideoCallStore.getState().initiateCall = initiateCall
-  }, [initiateCall])
+  }, [initiateCall, user])
+
+  if (!user) return null;
 
   return <VideoCallModal socket={socket} />
 }

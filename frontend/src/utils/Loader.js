@@ -1,6 +1,5 @@
 import React from 'react'
 import { motion } from 'framer-motion'
-import { FaWhatsapp } from 'react-icons/fa'
 
 
 export default function Loader({ progress = 0 }) {
@@ -10,9 +9,9 @@ export default function Loader({ progress = 0 }) {
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         transition={{ duration: 0.5, type: 'spring', stiffness: 260, damping: 20 }}
-        className="w-24 h-24 bg-white rounded-full flex items-center justify-center mb-8"
+        className="w-24 h-24 bg-[#15191C] rounded-full flex items-center justify-center mb-8 shadow-2xl overflow-hidden border-2 border-[#00E5FF] p-4"
       >
-        <FaWhatsapp className="w-16 h-16 text-green-500" />
+        <img src="/logo.png" className="w-full h-full object-cover rounded-full" alt="Talkies" />
       </motion.div>
       <div className="w-64 bg-white bg-opacity-30 rounded-full h-2 mb-4">
         <motion.div

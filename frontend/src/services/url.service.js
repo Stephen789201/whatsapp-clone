@@ -10,12 +10,12 @@ const axiosInstance = axios.create({
 });
 
 // Attach token to every request
-// axiosInstance.interceptors.request.use((config) => {
-//   const token = getToken();
-//   if (token) {
-//     config.headers.Authorization = `Bearer ${token}`;
-//   }
-//   return config;
-// });
+axiosInstance.interceptors.request.use((config) => {
+  const token = getToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
 export default axiosInstance;

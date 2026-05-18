@@ -9,9 +9,12 @@ import userStore from "../store/useUserStore";
 import { updateUserProfile } from "../services/user.service";
 import { toast } from "react-toastify";
 
+import { useChatStore } from "../store/chatStore";
+
 export default function UserDetails() {
+  const { fetchConversations } = useChatStore();
   const [name, setName] = useState("");
-  const [about, setAbout] = useState("Hey there! I am using WhatsApp.");
+  const [about, setAbout] = useState("Hey there! I am using Talkies.");
   const [profileImage, setProfileImage] = useState(null);
   const [preview, setPreview] = useState(null);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
@@ -61,6 +64,7 @@ export default function UserDetails() {
 
       const updated = await updateUserProfile(formData);
       setUser(updated.data);
+      
       setProfileImage(null);
       setPreview(null);
       toast.success("Profile updated");

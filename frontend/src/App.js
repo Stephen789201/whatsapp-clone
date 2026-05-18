@@ -10,11 +10,14 @@ import { ProtectedRoute, PublicRoute } from './Protected';
 import Setting from './page/SettingSection/Seetings';
 import { useChatStore } from './store/chatStore';
 import userStore from './store/useUserStore';
-import { disconnectSocket, initializeSocket } from './services/chat.service';
+import useLayoutStore from './store/layoutStore';
+import { getSocket, disconnectSocket, initializeSocket } from './services/chat.service';
+import VideoCallManager from './page/VideoCall/VideoCallManager';
 
 function App() {
-  const { setCurrentUser, initSocketListeners, cleanup } = useChatStore()
+  const { setCurrentUser, initSocketListeners, cleanup, conversations } = useChatStore()
   const { user } = userStore()
+  const { setSelectedContact, selectedContact } = useLayoutStore()
 
   useEffect(() => {
     // Initialize socket when user is logged in
@@ -35,11 +38,43 @@ function App() {
       cleanup()
       disconnectSocket()
     }
-  }, [user, setCurrentUser, initSocketListeners, cleanup])
+  }, [user?._id, setCurrentUser, initSocketListeners, cleanup])
+
+  // Keep chat store's user data in sync with profile updates
+  useEffect(() => {
+    if (user) {
+      setCurrentUser(user);
+    }
+  }, [user, setCurrentUser]);
+
+  // Restore selectedContact from persisted ID on refresh
+  useEffect(() => {
+    if (user?._id && !selectedContact && conversations) {
+      const persistedId = useLayoutStore.getState().selectedContactId;
+      if (persistedId) {
+        const list = Array.isArray(conversations) ? conversations : (conversations?.data || []);
+        const conversation = list.find(conv => 
+          conv.participants?.some(p => String(p._id || p) === String(persistedId))
+        );
+        
+        const contact = conversation?.participants?.find(p => 
+          String(p._id || p) === String(persistedId)
+        );
+
+        if (contact) {
+          console.log("Restoring selected contact from persistence:", contact.username);
+          setSelectedContact(contact);
+        }
+      }
+    }
+  }, [user?._id, conversations, selectedContact, setSelectedContact]);
  
+  const socket = getSocket();
+
   return (
     <>
       <ToastContainer position="top-right" autoClose={3000} />
+      {socket && <VideoCallManager socket={socket} />}
       <Router>
         <Routes>
           <Route element={<PublicRoute />}>

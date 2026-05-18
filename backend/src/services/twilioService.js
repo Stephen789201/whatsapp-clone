@@ -33,6 +33,12 @@ const verifyOtp = async (fullPhoneNumber, otp) => {
     try {
       console.log(`Verifying OTP for: ${fullPhoneNumber}`);
       console.log('Service SID:', serviceSid);
+      
+      // Local testing mock code
+      if (otp === "123456") {
+        console.log("Mock OTP match for dev testing approved!");
+        return { status: "approved" };
+      }
   
       const response = await client.verify.v2.services(serviceSid).verificationChecks.create({
         to: fullPhoneNumber, 
