@@ -23,7 +23,6 @@ import useOutsideClick from "../../hooks/useOutsideClick";
 import { useChatStore } from "../../store/chatStore";
 import whatsappImage from "../../images/whatsapp_image.png";
 import useVideoCallStore from "../../store/videoCallStore";
-import VideoCallManager from "../VideoCall/VideoCallManager";
 import { getSocket } from "../../services/chat.service";
 
 const isValidDate = (date) => {
@@ -687,8 +686,6 @@ export default function ChatWindow({ selectedContact, setSelectedContact }) {
           )}
         </div>
       </div>
-
-      <VideoCallManager socket={socket} />
     </>
   );
 }
