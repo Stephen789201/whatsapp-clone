@@ -3,7 +3,7 @@ import { FaPlus, FaSmile} from "react-icons/fa";
 import { format } from "date-fns";
 import EmojiPicker from "emoji-picker-react";
 import useOutsideClick from "../../hooks/useOutsideClick";
-import { FaCheck, FaCheckDouble } from "react-icons/fa";
+import { FaCheck, FaCheckDouble, FaFilePdf, FaDownload } from "react-icons/fa";
 import { RxCross2 } from "react-icons/rx";
 import { HiDotsVertical } from "react-icons/hi";
 import { FaTrashAlt, FaRegCopy } from "react-icons/fa";
@@ -90,6 +90,32 @@ const optionsRef = useRef(null);
               theme={theme}
               isUserMessage={isUserMessage}
             />
+          )}
+
+          {message.contentType === "document" && (
+            <a
+              href={message.documentUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`flex items-center space-x-3 p-3 rounded-lg border hover:bg-black/10 transition-colors ${
+                theme === "dark" 
+                  ? "bg-[#1f2c34]/50 border-white/10 text-white" 
+                  : "bg-white/60 border-black/10 text-black"
+              }`}
+            >
+              <div className="p-2 rounded bg-red-500 text-white">
+                <FaFilePdf size={24} />
+              </div>
+              <div className="flex-1 min-w-0 max-w-[180px]">
+                <p className="text-sm font-medium truncate block">
+                  {message.content || "Document"}
+                </p>
+                <span className="text-[10px] opacity-60">PDF / Document</span>
+              </div>
+              <div className="text-green-500 hover:text-green-600 p-1">
+                <FaDownload size={16} />
+              </div>
+            </a>
           )}
 
         </div>

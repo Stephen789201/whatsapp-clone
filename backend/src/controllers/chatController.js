@@ -30,9 +30,11 @@ exports.sendMessage = async (req, res) => {
 
     let imageOrVideoUrl = null;
     let audioUrl = null;
+    let documentUrl = null;
     let contentType = null;
+    let finalContent = content;
 
-    // Handle file upload (image, video, or audio)
+    // Handle file upload (image, video, audio, or document)
     if (file) {
       const baseUrl = `${req.protocol}://${req.get('host')}`;
       const fileUrl = `${baseUrl}/uploads/${file.filename}`;
@@ -52,6 +54,12 @@ exports.sendMessage = async (req, res) => {
       } else if (file.mimetype.startsWith("audio") || file.mimetype.includes("webm") || file.mimetype.includes("ogg") || file.mimetype.includes("audio")) {
         audioUrl = fileUrl;
         contentType = "audio";
+      } else if (file.mimetype === "application/pdf" || file.mimetype.startsWith("application/") || file.mimetype.startsWith("text/")) {
+        documentUrl = fileUrl;
+        contentType = "document";
+        if (!finalContent || !finalContent.trim()) {
+          finalContent = file.originalname;
+        }
       } else {
         return response(res, 400, "Unsupported file type");
       }
@@ -70,9 +78,10 @@ exports.sendMessage = async (req, res) => {
       conversation: conversation._id,
       sender: senderId,
       receiver: receiverId,
-      content,
+      content: finalContent,
       imageOrVideoUrl,
       audioUrl,
+      documentUrl,
       contentType,
       messageStatus: finalStatus,
     });

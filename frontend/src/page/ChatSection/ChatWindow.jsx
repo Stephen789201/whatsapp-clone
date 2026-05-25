@@ -14,6 +14,7 @@ import {
   FaMicrophone,
   FaTrash,
   FaCheck,
+  FaFilePdf,
 } from "react-icons/fa";
 import MessageBubble from "./MessageBubble";
 import EmojiPicker from "emoji-picker-react";
@@ -64,13 +65,29 @@ export default function ChatWindow({ selectedContact, setSelectedContact }) {
     addReaction,
     deleteMessage,
     markMessagesAsRead,
+    fetchUserStatus,
+    onlineUsers,
+    typingUsers,
   } = useChatStore();
 
 
   // Get online status and last seen
-  const online = isUserOnline(selectedContact?._id);
-  const lastSeen = getUserLastSeen(selectedContact?._id);
+  const online = onlineUsers?.has(String(selectedContact?._id))
+    ? onlineUsers.get(String(selectedContact?._id))?.isOnline
+    : selectedContact?.isOnline || false;
+
+  const lastSeen = onlineUsers?.has(String(selectedContact?._id))
+    ? onlineUsers.get(String(selectedContact?._id))?.lastSeen
+    : selectedContact?.lastSeen || null;
+
   const isTyping = isUserTyping(selectedContact?._id);
+
+  // Fetch status of current contact on mount and change
+  useEffect(() => {
+    if (selectedContact?._id) {
+      fetchUserStatus(selectedContact._id);
+    }
+  }, [selectedContact, fetchUserStatus]);
 
   useEffect(() => {
     if (selectedContact?._id) {
@@ -191,8 +208,9 @@ export default function ChatWindow({ selectedContact, setSelectedContact }) {
       setShowFileMenu(false);
       if (file.type.startsWith("image/") || file.type.startsWith("video/")) {
         setFilePreview(URL.createObjectURL(file));
+      } else {
+        setFilePreview("document-preview");
       }
-      
     }
   };
 
@@ -262,7 +280,7 @@ export default function ChatWindow({ selectedContact, setSelectedContact }) {
           formData.append("senderId", user._id);
           formData.append("receiverId", selectedContact._id);
           
-          const onlineStatus = isUserOnline(selectedContact?._id);
+          const onlineStatus = online;
           formData.append("messageStatus", onlineStatus ? "delivered" : "send");
           formData.append("media", audioFile);
 
@@ -524,30 +542,48 @@ export default function ChatWindow({ selectedContact, setSelectedContact }) {
           <div ref={messagesEndRef} />
         </div>
         {filePreview && (
-          <div className="relative p-2">
-            {selectedFile?.type.startsWith("video/") ? (
-              <video
-                src={filePreview}
-                controls
-                className="w-80 object-cover rounded shadow-lg mx-auto"
-              />
-            ) : (
-              <img
-                src={filePreview}
-                alt="File preview"
-                className="w-80 object-cover rounded shadow-lg mx-auto"
-              />
-            )}
+          <div className="relative p-2 flex justify-center">
+            <div className={`p-4 rounded-lg shadow-lg flex items-center space-x-3 w-80 relative ${
+              theme === "dark" ? "bg-gray-700 text-white" : "bg-gray-100 text-black"
+            }`}>
+              {selectedFile?.type.startsWith("video/") ? (
+                <video
+                  src={filePreview}
+                  controls
+                  className="w-full object-cover rounded shadow-lg mx-auto"
+                />
+              ) : filePreview === "document-preview" ? (
+                <div className="flex items-center space-x-3 w-full pr-6">
+                  <div className="p-2 rounded bg-red-500 text-white">
+                    <FaFilePdf size={28} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {selectedFile?.name}
+                    </p>
+                    <span className="text-xs opacity-60">
+                      {((selectedFile?.size || 0) / 1024 / 1024).toFixed(2)} MB
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <img
+                  src={filePreview}
+                  alt="File preview"
+                  className="w-full object-cover rounded shadow-lg mx-auto"
+                />
+              )}
 
-            <button
-              onClick={() => {
-                setSelectedFile(null);
-                setFilePreview(null);
-              }}
-              className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1"
-            >
-              <FaTimes className="h-4 w-4" />
-            </button>
+              <button
+                onClick={() => {
+                  setSelectedFile(null);
+                  setFilePreview(null);
+                }}
+                className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 z-10"
+              >
+                <FaTimes className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         )}
 

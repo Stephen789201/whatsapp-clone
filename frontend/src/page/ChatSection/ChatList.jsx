@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { FaPlus, FaSearch, FaCheck, FaCheckDouble } from "react-icons/fa";
 import useStore from "../../store/layoutStore";
@@ -6,14 +6,27 @@ import useThemeStore from "../../store/themeStore";
 import formatTimestamp from "../../utils/formatTime";
 import userStore from "../../store/useUserStore";
 import FriendsDrawer from "./FriendsDrawer";
+import { useChatStore } from "../../store/chatStore";
 
 const ChatList = ({ contacts, refreshUsers }) => {
+  const onlineUsers = useChatStore((state) => state.onlineUsers);
+  const fetchUserStatus = useChatStore((state) => state.fetchUserStatus);
   const setSelectedContact = useStore((state) => state.setSelectedContact);
   const selectedContact = useStore((state) => state.selectedContact);
   const { theme } = useThemeStore();
   const { user } = userStore();
   const [searchTerm, setSearchTerm] = useState("");
   const [showFriendsDrawer, setShowFriendsDrawer] = useState(false);
+
+  useEffect(() => {
+    if (contacts && contacts.length > 0) {
+      contacts.forEach((contact) => {
+        if (contact?._id) {
+          fetchUserStatus(contact._id);
+        }
+      });
+    }
+  }, [contacts, fetchUserStatus]);
 
   // Filter contacts: only show users who are friends OR have active conversations
   const friendsAndChats = contacts?.filter((contact) => contact.isFriend || contact.conversation !== null) || [];
@@ -72,26 +85,36 @@ const ChatList = ({ contacts, refreshUsers }) => {
         </div>
       </div>
       <div className="overflow-y-auto h-[calc(100vh-120px)]">
-        {filteredContacts.map((contact) => (
-          <motion.div
-            key={contact._id}
-            onClick={() => setSelectedContact(contact)}
-            className={`p-3  flex items-center cursor-pointer ${
-              theme === "dark"
-                ? selectedContact?._id === contact._id
-                  ? "bg-gray-700"
-                  : "hover:bg-gray-800"
-                : selectedContact?._id === contact._id
-                ? "bg-gray-200"
-                : "hover:bg-gray-100"
-            }`}
-          >
-            <img
-              src={contact?.profilePicture}
-              alt={contact?.username}
-              className="w-12 h-12 rounded-full"
-            />
-            <div className="ml-3 flex-1">
+        {filteredContacts.map((contact) => {
+          const isOnline = onlineUsers.has(String(contact._id))
+            ? onlineUsers.get(String(contact._id))?.isOnline
+            : contact.isOnline || false;
+
+          return (
+            <motion.div
+              key={contact._id}
+              onClick={() => setSelectedContact(contact)}
+              className={`p-3  flex items-center cursor-pointer ${
+                theme === "dark"
+                  ? selectedContact?._id === contact._id
+                    ? "bg-gray-700"
+                    : "hover:bg-gray-800"
+                  : selectedContact?._id === contact._id
+                  ? "bg-gray-200"
+                  : "hover:bg-gray-100"
+              }`}
+            >
+              <div className="relative flex-shrink-0 w-12 h-12">
+                <img
+                  src={contact?.profilePicture}
+                  alt={contact?.username}
+                  className="w-12 h-12 rounded-full object-cover"
+                />
+                {isOnline && (
+                  <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full bg-green-500 ring-2 ring-white" />
+                )}
+              </div>
+              <div className="ml-3 flex-1">
               <div className="flex justify-between items-baseline">
                 <h2
                   className={`font-semibold ${
@@ -160,7 +183,8 @@ const ChatList = ({ contacts, refreshUsers }) => {
               </div>
             </div>
           </motion.div>
-        ))}
+        );
+      })}
       </div>
     </div>
   );

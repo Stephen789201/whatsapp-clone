@@ -7,7 +7,8 @@ const messageSchema = new mongoose.Schema({
   content: { type: String },
   imageOrVideoUrl: { type: String },
   audioUrl: { type: String },
-  contentType: { type: String, enum: ['image', 'video','text', 'audio'] },
+  documentUrl: { type: String },
+  contentType: { type: String, enum: ['image', 'video','text', 'audio', 'document'] },
   reactions: [{
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     emoji: String
