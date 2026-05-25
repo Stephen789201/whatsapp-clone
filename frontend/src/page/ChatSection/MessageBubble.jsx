@@ -135,39 +135,42 @@ const optionsRef = useRef(null);
           </div>
 
           {/* 3-dot options menu icon - shows on hover */}
-<div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity z-20 ">
-  <button
-    onClick={() => setShowOptions((prev) => !prev)}
-    className={`p-1 rounded-full ${
-      theme === "dark"
-        ? " text-white"
-        : " text-gray-800"
-    }`}
-  >
-    <HiDotsVertical size={18} />
-  </button>
-</div>
+          {!message.isDeleted && (
+            <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity z-20 ">
+              <button
+                onClick={() => setShowOptions((prev) => !prev)}
+                className={`p-1 rounded-full ${
+                  theme === "dark"
+                    ? " text-white"
+                    : " text-gray-800"
+                }`}
+              >
+                <HiDotsVertical size={18} />
+              </button>
+            </div>
+          )}
 
-
-        <div
-          className={`absolute ${
-            isUserMessage ? "-left-10" : "-right-10"
-          } top-1/2 transform -translate-y-1/2 
-                    opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-2`}
-        >
-          <button
-            onClick={() => setShowReactions(!showReactions)}
-            className={`p-2 rounded-full ${
-              theme === "dark"
-                ? "bg-[#202c33] hover:bg-[#202c33]/80"
-                : "bg-white hover:bg-gray-100"
-            } shadow-lg`}
-          >
-            <FaSmile
-              className={theme === "dark" ? "text-gray-300" : "text-gray-600"}
-            />
-          </button>
-        </div>
+          {!message.isDeleted && (
+            <div
+              className={`absolute ${
+                isUserMessage ? "-left-10" : "-right-10"
+              } top-1/2 transform -translate-y-1/2 
+                        opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-2`}
+            >
+              <button
+                onClick={() => setShowReactions(!showReactions)}
+                className={`p-2 rounded-full ${
+                  theme === "dark"
+                    ? "bg-[#202c33] hover:bg-[#202c33]/80"
+                    : "bg-white hover:bg-gray-100"
+                } shadow-lg`}
+              >
+                <FaSmile
+                  className={theme === "dark" ? "text-gray-300" : "text-gray-600"}
+                />
+              </button>
+            </div>
+          )}
 
         {showReactions && (
           <div
@@ -262,18 +265,29 @@ const optionsRef = useRef(null);
       <span>Copy</span>
     </button>
 
-    {/* Delete Button */}
+    {/* Delete for Me Button */}
+    <button
+      onClick={() => {
+        deleteMessage(message._id, 'me');
+        setShowOptions(false);
+      }}
+      className="flex items-center w-full px-4 py-2 gap-3 rounded-lg text-red-600 hover:bg-black/5 dark:hover:bg-white/5"
+    >
+      <FaTrashAlt className="text-red-500" size={14} />
+      <span>Delete for me</span>
+    </button>
+
+    {/* Delete for Everyone Button */}
     {isUserMessage && (
       <button
         onClick={() => {
-          deleteMessage(message._id);
+          deleteMessage(message._id, 'everyone');
           setShowOptions(false);
         }}
-        className="flex items-center w-full px-4 py-2 gap-3 rounded-lg 
-          text-red-600"
+        className="flex items-center w-full px-4 py-2 gap-3 rounded-lg text-red-600 hover:bg-black/5 dark:hover:bg-white/5"
       >
         <FaTrashAlt className="text-red-500" size={14} />
-        <span>Delete</span>
+        <span>Delete for everyone</span>
       </button>
     )}
   </div>
