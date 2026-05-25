@@ -3,25 +3,25 @@ import { FaPlus, FaSmile} from "react-icons/fa";
 import { format } from "date-fns";
 import EmojiPicker from "emoji-picker-react";
 import useOutsideClick from "../../hooks/useOutsideClick";
-import { FaCheck, FaCheckDouble, FaFilePdf, FaDownload } from "react-icons/fa";
+import { FaCheck, FaCheckDouble, FaFilePdf, FaDownload, FaReply } from "react-icons/fa";
 import { RxCross2 } from "react-icons/rx";
 import { HiDotsVertical } from "react-icons/hi";
 import { FaTrashAlt, FaRegCopy } from "react-icons/fa";
 import VoiceMessage from "./VoiceMessage";
 
 
-const MessageBubble = ({ message, theme, onReact, currentUser,deleteMessage }) => {
+const MessageBubble = ({ message, theme, onReact, currentUser, deleteMessage, onReply }) => {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showReactions, setShowReactions] = useState(false);
   const messageRef = useRef(null);
   const [showOptions, setShowOptions] = useState(false);
-const optionsRef = useRef(null);
-
+  const optionsRef = useRef(null);
 
   const emojiPickerRef = useRef(null);
   const reactionsMenuRef = useRef(null);
 
-  const isUserMessage = message.sender._id === currentUser._id;
+  const senderId = typeof message.sender === "object" ? message.sender?._id : message.sender;
+  const isUserMessage = String(senderId) === String(currentUser?._id);
 
   const bubbleClass = isUserMessage ? `chat-end` : `chat-start`;
 
@@ -60,8 +60,31 @@ const optionsRef = useRef(null);
         className={`${bubbleContentClass} relative group `}
         ref={messageRef}
       >
-        <div className="flex  justify-center gap-2">
-          {message.contentType === "text" && <p className="mr-2">{message.content}</p>}
+        {message.parentMessage && (
+          <div className={`mb-1.5 p-2 rounded text-xs border-l-4 text-start ${
+            theme === "dark" 
+              ? "bg-black/20 border-green-500 text-gray-300" 
+              : "bg-black/5 border-green-500 text-gray-600"
+          }`}>
+            <span className="font-bold block text-green-500 mb-0.5">
+              {message.parentMessage.sender?._id === currentUser._id || message.parentMessage.sender === currentUser._id
+                ? "You" 
+                : message.parentMessage.sender?.username || "Contact"}
+            </span>
+            <p className="truncate max-w-[220px]">
+              {message.parentMessage.isDeleted ? "🚫 This message was deleted" : message.parentMessage.content}
+            </p>
+          </div>
+        )}
+        <div className="flex justify-start gap-2">
+          {message.contentType === "text" && (
+            <p className={`mr-2 ${message.isDeleted ? "italic opacity-60 text-sm" : ""}`}>
+              {message.isDeleted 
+                ? (isUserMessage ? "🚫 You deleted this message" : "🚫 This message was deleted")
+                : message.content
+              }
+            </p>
+          )}
           {message.contentType === "image" && (
             <div>
               <img
@@ -121,7 +144,7 @@ const optionsRef = useRef(null);
         </div>
                   <div className="self-end flex items-center justify-end gap-1 text-xs opacity-60 mt-2 ml-2">
             <span>{format(new Date(message.createdAt), "HH:mm")}</span>
-            {isUserMessage && (
+            {isUserMessage && !message.isDeleted && (
               <>
                 {message.messageStatus === "send" && <FaCheck size={12} />}
                 {message.messageStatus === "delivered" && (
@@ -250,6 +273,18 @@ const optionsRef = useRef(null);
       ${theme === "dark" ? "bg-[#1d1f1f] text-white" : "bg-gray-100 text-black"} 
       b`}
   >
+    {/* Reply Button */}
+    <button
+      onClick={() => {
+        onReply(message);
+        setShowOptions(false);
+      }}
+      className="flex items-center w-full px-4 py-2 gap-3 rounded-lg hover:bg-black/5 dark:hover:bg-white/5"
+    >
+      <FaReply size={14} />
+      <span>Reply</span>
+    </button>
+
     {/* Copy Button */}
     <button
       onClick={() => {

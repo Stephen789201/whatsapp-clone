@@ -7,7 +7,7 @@ const path = require('path');
 
 // Send a message (text/image/video)
 exports.sendMessage = async (req, res) => {
-  const { senderId, receiverId, content, messageStatus } = req.body;
+  const { senderId, receiverId, content, messageStatus, parentMessage } = req.body;
   const file = req.file;
   try {
     // Sort participants to maintain consistent conversation key
@@ -84,6 +84,7 @@ exports.sendMessage = async (req, res) => {
       documentUrl,
       contentType,
       messageStatus: finalStatus,
+      parentMessage: parentMessage || null,
     });
 
     await message.save();
@@ -96,7 +97,14 @@ exports.sendMessage = async (req, res) => {
     // Populate sender and receiver info
     const populatedMessage = await Message.findById(message._id)
       .populate("sender", "username profilePicture")
-      .populate("receiver", "username profilePicture");
+      .populate("receiver", "username profilePicture")
+      .populate({
+        path: "parentMessage",
+        populate: {
+          path: "sender",
+          select: "username"
+        }
+      });
 
     // Get fresh conversation with participants populated
     const populatedConversation = await Conversation.findById(conversation._id)
@@ -188,6 +196,13 @@ exports.getMessages = async (req, res) => {
     const messages = await Message.find({ conversation: conversationId })
       .populate("sender", "username profilePicture")
       .populate("receiver", "username profilePicture")
+      .populate({
+        path: "parentMessage",
+        populate: {
+          path: "sender",
+          select: "username"
+        }
+      })
       .sort("createdAt");
 
     // Find unread messages to get their sender IDs before updating

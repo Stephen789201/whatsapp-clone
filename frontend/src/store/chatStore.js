@@ -325,6 +325,7 @@ export const useChatStore = create(
     const media = formData.get("media");
     const content = formData.get("content");
     const messageStatus = formData.get("messageStatus");
+    const parentMessageId = formData.get("parentMessage");
 
     const socket = getSocket();
 
@@ -342,6 +343,19 @@ export const useChatStore = create(
       if (conversation) {
         conversationId = conversation._id;
         set({ currentConversation: conversationId });
+      }
+    }
+
+    let optimisticParent = null;
+    if (parentMessageId) {
+      const parentMsgObj = get().messages.find(m => String(m._id) === String(parentMessageId));
+      if (parentMsgObj) {
+        optimisticParent = {
+          _id: parentMsgObj._id,
+          content: parentMsgObj.content,
+          isDeleted: parentMsgObj.isDeleted,
+          sender: typeof parentMsgObj.sender === "object" ? { username: parentMsgObj.sender.username } : { username: "Contact" }
+        };
       }
     }
 
@@ -370,6 +384,7 @@ export const useChatStore = create(
         : "text",
       createdAt: new Date().toISOString(),
       messageStatus: messageStatus || "send",
+      parentMessage: optimisticParent,
     };
 
     set((state) => ({

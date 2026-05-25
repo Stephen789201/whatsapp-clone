@@ -15,7 +15,8 @@ const messageSchema = new mongoose.Schema({
   }],
   messageStatus:{type:String,default:'send'},
   isDeleted: { type: Boolean, default: false },
-  deletedFor: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
+  deletedFor: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  parentMessage: { type: mongoose.Schema.Types.ObjectId, ref: 'Message', default: null }
 }, { timestamps: true });
 
 const Message = mongoose.model('Message', messageSchema);

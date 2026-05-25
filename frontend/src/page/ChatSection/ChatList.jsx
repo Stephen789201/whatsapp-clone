@@ -165,9 +165,14 @@ const ChatList = ({ contacts, refreshUsers }) => {
                   <p
                     className={`text-sm ${
                       theme === "dark" ? "text-gray-400" : "text-gray-500"
-                    } truncate flex-1`}
+                    } truncate flex-1 ${contact?.conversation?.lastMessage?.isDeleted ? "italic opacity-60" : ""}`}
                   >
-                    {contact?.conversation?.lastMessage?.content}
+                    {contact?.conversation?.lastMessage?.isDeleted
+                      ? (String(contact.conversation.lastMessage.sender?._id || contact.conversation.lastMessage.sender) === String(user?._id)
+                          ? "🚫 You deleted this message"
+                          : "🚫 This message was deleted")
+                      : contact?.conversation?.lastMessage?.content
+                    }
                   </p>
                 </div>
                 {contact?.conversation &&

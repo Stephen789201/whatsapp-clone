@@ -40,6 +40,12 @@ export default function ChatWindow({ selectedContact, setSelectedContact }) {
   const messagesEndRef = useRef(null);
   const emojiPickerRef = useRef(null);
   const fileInputRef = useRef(null);
+  const [replyingTo, setReplyingTo] = useState(null);
+
+  // Clear reply context when switching chats
+  useEffect(() => {
+    setReplyingTo(null);
+  }, [selectedContact]);
 
   // Voice recording state & refs
   const [isRecording, setIsRecording] = useState(false);
@@ -229,6 +235,9 @@ export default function ChatWindow({ selectedContact, setSelectedContact }) {
       if (message.trim()) {
         formData.append("content", message.trim());
       }
+      if (replyingTo) {
+        formData.append("parentMessage", replyingTo._id);
+      }
       console.log('this is selected file',selectedFile)
       // If there's a file, include that too
       if (selectedFile) {
@@ -244,6 +253,7 @@ export default function ChatWindow({ selectedContact, setSelectedContact }) {
       setSelectedFile(null);
       setFilePreview(null);
       setShowFileMenu(false);
+      setReplyingTo(null);
     } catch (error) {
       console.error("Failed to send message:", error);
     }
@@ -535,6 +545,7 @@ export default function ChatWindow({ selectedContact, setSelectedContact }) {
                     currentUser={user}
                     onReact={handleReaction}
                     deleteMessage={deleteMessage}
+                    onReply={(replyMsg) => setReplyingTo(replyMsg)}
                   />
                 ))}
             </React.Fragment>
@@ -584,6 +595,27 @@ export default function ChatWindow({ selectedContact, setSelectedContact }) {
                 <FaTimes className="h-4 w-4" />
               </button>
             </div>
+          </div>
+        )}
+
+        {replyingTo && (
+          <div className={`px-4 py-2 flex items-center justify-between border-t text-sm ${
+            theme === "dark" ? "bg-[#202c33] border-gray-600 text-white" : "bg-gray-100 border-gray-200 text-black"
+          }`}>
+            <div className="border-l-4 border-green-500 pl-3">
+              <span className="font-semibold text-green-500 block">
+                Replying to {replyingTo.sender?._id === user._id || replyingTo.sender === user._id ? "You" : replyingTo.sender?.username || "Contact"}
+              </span>
+              <p className="truncate max-w-md opacity-80">
+                {replyingTo.isDeleted ? "🚫 This message was deleted" : replyingTo.content}
+              </p>
+            </div>
+            <button
+              onClick={() => setReplyingTo(null)}
+              className="p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded-full"
+            >
+              <FaTimes size={16} />
+            </button>
           </div>
         )}
 
