@@ -11,18 +11,17 @@ require('dotenv').config();
 const PORT = process.env.PORT || 5000;
 const app = express();
 
+// Serve static files from uploads folder
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+const morgan = require('morgan');
+app.use(morgan('dev'));
+
 // Configure CORS
 const corsOptions = {
     origin: process.env.FRONTEND_URL,
     credentials:true
 };
 app.use(cors(corsOptions));
-
-// Serve static files from uploads folder
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-const morgan = require('morgan');
-app.use(morgan('dev'));
-
 
 // Middleware
 app.use(express.json());

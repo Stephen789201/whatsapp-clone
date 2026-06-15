@@ -97,8 +97,8 @@ const VideoCallModal = ({ socket }) => {
   useEffect(() => {
     const checkTrackHealth = (stream) => {
       if (!stream) return false;
-      const tracks = stream.getTracks();
-      return tracks.length > 0 && tracks.every(t => t.readyState === 'live' && t.enabled);
+      const tracks = stream.getVideoTracks();
+      return tracks.length > 0 && tracks.every(t => t.readyStatus === 'live' && t.enabled);
     };
 
     const updateVideos = () => {
@@ -233,23 +233,17 @@ const VideoCallModal = ({ socket }) => {
     pc.ontrack = (event) => {
       console.log("Remote track received:", event.track.kind)
       
-      // Create a new MediaStream instance combining all receiver tracks.
-      // This forces React to recognize the stream reference change and re-bind/re-play the media element.
-      const newStream = new MediaStream()
-      pc.getReceivers().forEach(receiver => {
-        if (receiver.track) {
-          newStream.addTrack(receiver.track)
-        }
-      })
-      
-      // Fallback: use event stream tracks if receivers are empty
-      if (newStream.getTracks().length === 0 && event.streams && event.streams[0]) {
-        event.streams[0].getTracks().forEach(track => {
-          newStream.addTrack(track)
-        })
+      // If streams are available, use the first one
+      if (event.streams && event.streams[0]) {
+        console.log("Using existing stream from event")
+        setRemoteStream(event.streams[0])
+      } else {
+        // Fallback: create a new stream and add the track
+        console.log("Creating new stream from track fallback")
+        const newStream = new MediaStream()
+        newStream.addTrack(event.track)
+        setRemoteStream(newStream)
       }
-      
-      setRemoteStream(newStream)
     }
 
     pc.onconnectionstatechange = () => {
@@ -465,8 +459,7 @@ const VideoCallModal = ({ socket }) => {
             
             {/* Remote Video (Full Screen) */}
             <div className="absolute inset-0 w-full h-full bg-black">
-              {/* Remote Media Element (always render if remoteStream exists to play audio/video) */}
-              {remoteStream && (
+              {callType === "video" && remoteStream ? (
                 <video
                   ref={remoteVideoRef}
                   autoPlay
@@ -475,12 +468,9 @@ const VideoCallModal = ({ socket }) => {
                     console.log("Remote play triggered");
                     e.target.play().catch(console.error);
                   }}
-                  className={`w-full h-full object-cover animate-in fade-in duration-700 ${callType === "voice" ? "hidden" : ""}`}
+                  className="w-full h-full object-cover animate-in fade-in duration-700"
                 />
-              )}
-              
-              {/* Show avatar and name if it's a voice call, or if remote stream is not loaded yet */}
-              {(callType === "voice" || !remoteStream) && (
+              ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden">
                    {/* Blurred background for no video */}
                    <div className="absolute inset-0 opacity-10 blur-2xl scale-125">

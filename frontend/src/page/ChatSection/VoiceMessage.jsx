@@ -38,17 +38,10 @@ const VoiceMessage = ({ audioUrl, theme, isUserMessage }) => {
   const togglePlay = () => {
     if (isPlaying) {
       audioRef.current.pause();
-      setIsPlaying(false);
     } else {
-      audioRef.current.play()
-        .then(() => {
-          setIsPlaying(true);
-        })
-        .catch((error) => {
-          console.error("Audio playback failed:", error);
-          setIsPlaying(false);
-        });
+      audioRef.current.play();
     }
+    setIsPlaying(!isPlaying);
   };
 
   const handleSeek = (e) => {

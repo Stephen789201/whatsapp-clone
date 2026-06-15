@@ -318,7 +318,7 @@ exports.deleteMessage = async (req, res) => {
         const mediaUrl = message.audioUrl || message.imageOrVideoUrl;
         if (mediaUrl.includes("/uploads/")) {
           const filename = mediaUrl.split("/").pop();
-          const filePath = path.join(__dirname, "../../uploads", filename);
+          const filePath = path.join(__dirname, "../../../../uploads", filename);
           if (fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);
             console.log("SUCCESS: Physical file removed for everyone:", filename);

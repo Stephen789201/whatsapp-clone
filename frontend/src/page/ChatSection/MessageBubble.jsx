@@ -26,10 +26,10 @@ const MessageBubble = ({ message, theme, onReact, currentUser, deleteMessage, on
   const bubbleClass = isUserMessage ? `chat-end` : `chat-start`;
 
   const bubbleContentClass = isUserMessage
-    ? `chat-bubble  md:max-w-[50%] min-w-[130px]  ${
+    ? `chat-bubble max-w-[85%] md:max-w-[60%] min-w-[130px] break-words ${
         theme === "dark" ? "bg-[#144d38] text-white" : "bg-[#d9fdd3] text-black"
       }`
-    : `chat-bubble  md:max-w-[50%] min-w-[130px]   ${
+    : `chat-bubble max-w-[85%] md:max-w-[60%] min-w-[130px] break-words ${
         theme === "dark" ? "bg-[#144d38] text-white" : "bg-white text-black"
       }`;
 
@@ -78,7 +78,7 @@ const MessageBubble = ({ message, theme, onReact, currentUser, deleteMessage, on
         )}
         <div className="flex justify-start gap-2">
           {message.contentType === "text" && (
-            <p className={`mr-2 ${message.isDeleted ? "italic opacity-60 text-sm" : ""}`}>
+            <p className={`mr-2 break-words whitespace-pre-wrap min-w-0 ${message.isDeleted ? "italic opacity-60 text-sm" : ""}`}>
               {message.isDeleted 
                 ? (isUserMessage ? "🚫 You deleted this message" : "🚫 This message was deleted")
                 : message.content

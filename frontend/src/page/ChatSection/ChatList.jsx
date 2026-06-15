@@ -114,7 +114,7 @@ const ChatList = ({ contacts, refreshUsers }) => {
                   <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full bg-green-500 ring-2 ring-white" />
                 )}
               </div>
-              <div className="ml-3 flex-1">
+              <div className="ml-3 flex-1 min-w-0">
               <div className="flex justify-between items-baseline">
                 <h2
                   className={`font-semibold ${

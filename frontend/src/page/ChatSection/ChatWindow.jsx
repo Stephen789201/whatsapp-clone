@@ -530,7 +530,7 @@ export default function ChatWindow({ selectedContact, setSelectedContact }) {
           </div>
         </div>
         <div
-          className={`flex-1 p-4 overflow-y-auto ${
+          className={`flex-1 p-4 overflow-y-auto overflow-x-hidden ${
             theme === "dark" ? "bg-[#191a1a]" : "bg-[rgb(241,236,229)]"
           }`}
         >
