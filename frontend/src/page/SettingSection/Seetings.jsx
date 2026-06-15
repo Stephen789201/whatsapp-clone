@@ -22,6 +22,7 @@ import { toast } from "react-toastify";
 export default function Setting() {
   const [isThemeDialogOpen, setIsThemeDialogOpen] = useState(false);
   const [isWallpaperDialogOpen, setIsWallpaperDialogOpen] = useState(false);
+  const [activeDetail, setActiveDetail] = useState("help");
   const { theme } = useThemeStore();
   const { user, clearUser } = userStore();
   const { setChatWallpaper, resetWallpaper } = useSettingsStore();
@@ -104,27 +105,50 @@ export default function Setting() {
                 {[
                   { icon: FaUser, label: "Account", href: "/user-details" },
                   { icon: FaComment, label: "Chats", href: "/" },
-                  { icon: FaQuestionCircle, label: "Help" },
-                ].map((item) => (
-                  <Link
-                    to={item.href}
-                    key={item.label}
-                    className={`w-full flex items-center gap-3 p-2 rounded ${
-                      theme === "dark"
-                        ? "text-white hover:bg-[#202c33]"
-                        : "text-black hover:bg-gray-100"
-                    }`}
-                  >
-                    <item.icon className="h-5 w-5" />
-                    <div
-                      className={`border-b ${
-                        theme === "dark" ? "border-gray-700" : "border-gray-200"
-                      }  w-full p-4`}
-                    >
-                      {item.label}
-                    </div>
-                  </Link>
-                ))}
+                  { icon: FaQuestionCircle, label: "Help", action: () => setActiveDetail("help") },
+                ].map((item) => {
+                  const content = (
+                    <>
+                      <item.icon className="h-5 w-5" />
+                      <div
+                        className={`border-b ${
+                          theme === "dark" ? "border-gray-700" : "border-gray-200"
+                        }  w-full p-4`}
+                      >
+                        {item.label}
+                      </div>
+                    </>
+                  );
+                  if (item.href) {
+                    return (
+                      <Link
+                        to={item.href}
+                        key={item.label}
+                        className={`w-full flex items-center gap-3 p-2 rounded ${
+                          theme === "dark"
+                            ? "text-white hover:bg-[#202c33]"
+                            : "text-black hover:bg-gray-100"
+                        }`}
+                      >
+                        {content}
+                      </Link>
+                    );
+                  } else {
+                    return (
+                      <button
+                        onClick={item.action}
+                        key={item.label}
+                        className={`w-full flex items-center gap-3 p-2 rounded text-start ${
+                          theme === "dark"
+                            ? "text-white hover:bg-[#202c33]"
+                            : "text-black hover:bg-gray-100"
+                        }`}
+                      >
+                        {content}
+                      </button>
+                    );
+                  }
+                })}
 
                 {/* Theme Button */}
                 <button
@@ -262,6 +286,84 @@ export default function Setting() {
               </button>
             </div>
           </div>
+        </div>
+
+        {/* Right Details Panel */}
+        <div className="flex-1 flex items-center justify-center p-8 overflow-y-auto">
+          {activeDetail === "help" ? (
+            <div
+              className={`w-full max-w-xl p-8 rounded-2xl shadow-xl border transition-all duration-300 ${
+                theme === "dark"
+                  ? "bg-[#1f2c34] border-[#2f3b43] text-white"
+                  : "bg-gray-50 border-gray-200 text-black"
+              }`}
+            >
+              <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-600/20">
+                <FaQuestionCircle className="h-8 w-8 text-green-500" />
+                <div>
+                  <h2 className="text-2xl font-bold">Help & Support</h2>
+                  <p className="text-xs text-gray-400">Get assistance and contact our team</p>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                {/* Admin Enquiry Box */}
+                <div
+                  className={`p-5 rounded-xl border ${
+                    theme === "dark"
+                      ? "bg-[#111b21] border-[#2f3b43]"
+                      : "bg-white border-gray-200 shadow-sm"
+                  }`}
+                >
+                  <h3 className="font-semibold text-green-500 mb-2 text-base">Contact Support & Enquiry</h3>
+                  <p className="text-sm text-gray-400 mb-4 leading-relaxed">
+                    If you have any questions, encounter technical issues, or want to make an enquiry, please contact our administrator directly:
+                  </p>
+                  
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                    <div>
+                      <p className="text-xs uppercase tracking-wider text-green-500 font-semibold">Admin Phone Number</p>
+                      <p className="text-lg font-bold tracking-wide">+91 78923 92608</p>
+                    </div>
+                    <button
+                      onClick={() => window.open("https://wa.me/917892392608", "_blank")}
+                      className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm font-semibold flex items-center justify-center gap-2 shadow-md shadow-green-500/20"
+                    >
+                      Chat on WhatsApp
+                    </button>
+                  </div>
+                </div>
+
+                {/* FAQ / Info Accordion items */}
+                <div className="space-y-3">
+                  <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'border-[#2f3b43] bg-[#222e35]/50' : 'border-gray-200 bg-white'}`}>
+                    <h4 className="font-semibold text-sm">Help Center</h4>
+                    <p className="text-xs text-gray-400 mt-1">Read our guides and FAQs to quickly learn how to use Talkies features.</p>
+                  </div>
+
+                  <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'border-[#2f3b43] bg-[#222e35]/50' : 'border-gray-200 bg-white'}`}>
+                    <h4 className="font-semibold text-sm">Terms and Privacy Policy</h4>
+                    <p className="text-xs text-gray-400 mt-1">Learn about your rights and how we handle and protect your data.</p>
+                  </div>
+
+                  <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'border-[#2f3b43] bg-[#222e35]/50' : 'border-gray-200 bg-white'}`}>
+                    <h4 className="font-semibold text-sm">App Info</h4>
+                    <p className="text-xs text-gray-400 mt-1">Talkies Web v2.1.0 • Built with MERN, WebRTC, TailwindCSS, & Socket.io</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center p-6 max-w-sm">
+              <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-green-500/10 flex items-center justify-center">
+                <FaQuestionCircle className="h-10 w-10 text-green-500" />
+              </div>
+              <h3 className="text-xl font-bold mb-2">Talkies Settings</h3>
+              <p className="text-sm text-gray-400">
+                Select an option from the sidebar settings menu to view details and customize your experience.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </Layout>
