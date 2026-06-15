@@ -352,7 +352,7 @@ export default function Setting() {
                       onClick={handleChatWithAdmin}
                       className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm font-semibold flex items-center justify-center gap-2 shadow-md shadow-green-500/20"
                     >
-                      Chat on Talkies
+                      Chat with us
                     </button>
                   </div>
                 </div>
