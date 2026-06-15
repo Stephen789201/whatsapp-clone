@@ -8,6 +8,7 @@ import {
   FaSignOutAlt,
   FaComment,
   FaPalette,
+  FaCog,
 } from "react-icons/fa";
 import useThemeStore from "../../store/themeStore";
 import useSettingsStore from "../../store/settingsStore";
@@ -22,7 +23,7 @@ import { toast } from "react-toastify";
 export default function Setting() {
   const [isThemeDialogOpen, setIsThemeDialogOpen] = useState(false);
   const [isWallpaperDialogOpen, setIsWallpaperDialogOpen] = useState(false);
-  const [activeDetail, setActiveDetail] = useState("help");
+  const [activeDetail, setActiveDetail] = useState(null);
   const { theme } = useThemeStore();
   const { user, clearUser } = userStore();
   const { setChatWallpaper, resetWallpaper } = useSettingsStore();
@@ -356,7 +357,7 @@ export default function Setting() {
           ) : (
             <div className="text-center p-6 max-w-sm">
               <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-green-500/10 flex items-center justify-center">
-                <FaQuestionCircle className="h-10 w-10 text-green-500" />
+                <FaCog className="h-10 w-10 text-green-500 animate-spin" style={{ animationDuration: "12s" }} />
               </div>
               <h3 className="text-xl font-bold mb-2">Talkies Settings</h3>
               <p className="text-sm text-gray-400">
