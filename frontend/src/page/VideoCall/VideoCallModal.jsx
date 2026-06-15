@@ -241,6 +241,14 @@ const VideoCallModal = ({ socket }) => {
           newStream.addTrack(receiver.track)
         }
       })
+      
+      // Fallback: use event stream tracks if receivers are empty
+      if (newStream.getTracks().length === 0 && event.streams && event.streams[0]) {
+        event.streams[0].getTracks().forEach(track => {
+          newStream.addTrack(track)
+        })
+      }
+      
       setRemoteStream(newStream)
     }
 
