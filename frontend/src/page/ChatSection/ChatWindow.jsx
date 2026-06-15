@@ -14,6 +14,7 @@ import {
   FaMicrophone,
   FaTrash,
   FaCheck,
+  FaCheckCircle,
   FaFilePdf,
 } from "react-icons/fa";
 import MessageBubble from "./MessageBubble";
@@ -487,8 +488,15 @@ export default function ChatWindow({ selectedContact, setSelectedContact }) {
             className="w-10 h-10 rounded-full"
           />
           <div className="ml-3 flex-grow">
-            <h2 className="font-semibold text-start">
-              {selectedContact?.username}
+            <h2 className="font-semibold text-start flex items-center gap-1.5">
+              {String(selectedContact?.phoneNumber) === "7892392608" ? (
+                <>
+                  Talkies Support
+                  <FaCheckCircle className="text-green-500 h-4 w-4" />
+                </>
+              ) : (
+                selectedContact?.username
+              )}
             </h2>
 
             {isTyping ? (

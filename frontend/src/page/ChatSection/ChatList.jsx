@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { FaPlus, FaSearch, FaCheck, FaCheckDouble } from "react-icons/fa";
+import { FaPlus, FaSearch, FaCheck, FaCheckDouble, FaCheckCircle } from "react-icons/fa";
 import useStore from "../../store/layoutStore";
 import useThemeStore from "../../store/themeStore";
 import formatTimestamp from "../../utils/formatTime";
@@ -115,13 +115,20 @@ const ChatList = ({ contacts, refreshUsers }) => {
                 )}
               </div>
               <div className="ml-3 flex-1 min-w-0">
-              <div className="flex justify-between items-baseline">
+              <div className="flex justify-between items-baseline min-w-0">
                 <h2
-                  className={`font-semibold ${
+                  className={`font-semibold flex items-center gap-1.5 truncate ${
                     theme === "dark" ? "text-white" : "text-black"
                   }`}
                 >
-                  {contact.username}
+                  {String(contact.phoneNumber) === "7892392608" ? (
+                    <>
+                      Talkies Support
+                      <FaCheckCircle className="text-green-500 h-3.5 w-3.5 flex-shrink-0" />
+                    </>
+                  ) : (
+                    contact.username
+                  )}
                 </h2>
                 {contact?.conversation && (
                   <span
