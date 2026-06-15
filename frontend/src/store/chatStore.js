@@ -35,12 +35,32 @@ export const useChatStore = create(
         const targetId = String(messageId);
         set((state) => {
           const updatedPending = { ...state.pendingStatusUpdates, [targetId]: messageStatus };
+          
+          // 1. Update message in active messages list
           const updatedMessages = state.messages.map((msg) =>
             String(msg._id) === targetId ? { ...msg, messageStatus } : msg
           );
+
+          // 2. Update message in conversations preview list (sidebar)
+          const list = Array.isArray(state.conversations) ? state.conversations : (state.conversations?.data || []);
+          const updatedConversations = list.map((conv) => {
+            if (conv.lastMessage && String(conv.lastMessage._id) === targetId) {
+              return {
+                ...conv,
+                lastMessage: { ...conv.lastMessage, messageStatus }
+              };
+            }
+            return conv;
+          });
+
+          const conversationsResult = Array.isArray(state.conversations)
+            ? updatedConversations
+            : { ...state.conversations, data: updatedConversations };
+
           return {
             pendingStatusUpdates: updatedPending,
             messages: updatedMessages,
+            conversations: conversationsResult,
           };
         });
       },
@@ -450,14 +470,25 @@ export const useChatStore = create(
     const messageExists = messages.some((msg) => msg._id === message._id);
     if (messageExists) return;
 
+    // Acknowledge delivery to sender immediately
+    const receiverId = message.receiver?._id || message.receiver;
+    const senderId = message.sender?._id || message.sender;
+    if (String(receiverId) === String(currentUser?._id)) {
+      const socket = getSocket();
+      if (socket) {
+        socket.emit("message_received", {
+          messageId: message._id,
+          senderId: senderId,
+        });
+      }
+    }
+
     if (message.conversation === currentConversation) {
       set((state) => ({
         messages: [...state.messages, message],
       }));
 
       // Automatically mark as read if actively viewing this specific conversation
-      const receiverId = message.receiver?._id || message.receiver;
-      const senderId = message.sender?._id || message.sender;
       const activeContact = useLayoutStore.getState().selectedContact;
       const activeTab = useLayoutStore.getState().activeTab;
       

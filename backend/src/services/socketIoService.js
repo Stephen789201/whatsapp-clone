@@ -194,7 +194,7 @@ const initializeSocket = (server) => {
       // Auto-stop typing after 3 seconds
       userTyping[`${conversationId}_timeout`] = setTimeout(() => {
         userTyping[conversationId] = false;
-        socket.to(rid).emit("user_typing", {
+        io.to(rid).emit("user_typing", {
           userId,
           conversationId,
           isTyping: false,
@@ -202,7 +202,7 @@ const initializeSocket = (server) => {
       }, 3000);
 
       // Notify receiver
-      socket.to(rid).emit("user_typing", {
+      io.to(rid).emit("user_typing", {
         userId,
         conversationId,
         isTyping: true,
@@ -226,7 +226,7 @@ const initializeSocket = (server) => {
         }
       }
 
-      socket.to(rid).emit("user_typing", {
+      io.to(rid).emit("user_typing", {
         userId,
         conversationId,
         isTyping: false,
