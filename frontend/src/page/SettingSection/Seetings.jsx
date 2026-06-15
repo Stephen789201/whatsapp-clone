@@ -338,15 +338,15 @@ export default function Setting() {
                       : "bg-white border-gray-200 shadow-sm"
                   }`}
                 >
-                  <h3 className="font-semibold text-green-500 mb-2 text-base">Contact Support & Enquiry</h3>
+                  <h3 className="font-semibold text-green-500 mb-2 text-base">Contact Us</h3>
                   <p className="text-sm text-gray-400 mb-4 leading-relaxed">
-                    If you have any questions, encounter technical issues, or want to make an enquiry, please contact our administrator directly:
+                    Have a question or need help? Message our support team directly. We will respond to you in a Talkies chat.
                   </p>
                   
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-lg bg-green-500/10 border border-green-500/20">
                     <div>
-                      <p className="text-xs uppercase tracking-wider text-green-500 font-semibold">Admin Phone Number</p>
-                      <p className="text-lg font-bold tracking-wide">+91 78923 92608</p>
+                      <p className="font-semibold text-sm">Message support directly</p>
+                      <p className="text-xs text-gray-400 mt-0.5">We typically respond within 24 hours.</p>
                     </div>
                     <button
                       onClick={handleChatWithAdmin}
