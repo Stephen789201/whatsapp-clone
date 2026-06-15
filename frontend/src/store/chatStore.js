@@ -483,20 +483,34 @@ export const useChatStore = create(
       }
     }
 
-    if (message.conversation === currentConversation) {
+    const activeContact = useLayoutStore.getState().selectedContact;
+    const activeTab = useLayoutStore.getState().activeTab;
+    const activeContactId = activeContact?._id || activeContact;
+
+    // Check if the message belongs to the currently active chat
+    const isFromOrToActiveContact = activeContactId && (
+      String(senderId) === String(activeContactId) ||
+      String(receiverId) === String(activeContactId)
+    );
+
+    // If it belongs to the active chat and currentConversation is not set yet, adopt it!
+    let shouldAppend = message.conversation === currentConversation;
+    if (!currentConversation && isFromOrToActiveContact) {
+      set({ currentConversation: message.conversation });
+      shouldAppend = true;
+    }
+
+    if (shouldAppend) {
       set((state) => ({
         messages: [...state.messages, message],
       }));
 
       // Automatically mark as read if actively viewing this specific conversation
-      const activeContact = useLayoutStore.getState().selectedContact;
-      const activeTab = useLayoutStore.getState().activeTab;
-      
       const isViewingThisChat = 
         window.location.pathname === "/" &&
         activeTab === "chats" &&
-        activeContact &&
-        String(activeContact._id) === String(senderId) &&
+        activeContactId &&
+        String(activeContactId) === String(senderId) &&
         document.visibilityState !== "hidden";
 
       if (String(receiverId) === String(currentUser?._id) && isViewingThisChat) {
@@ -635,26 +649,28 @@ deleteMessage: async (messageId, deleteType = 'everyone') => {
 
   // ======== Typing Events (start/stop) ========
   startTyping: (receiverId) => {
-    const { currentConversation } = get();
+    const { currentConversation, currentUser } = get();
     const socket = getSocket();
+    const convId = currentConversation || (currentUser?._id && receiverId ? [currentUser._id, receiverId].sort().join("_") : null);
 
-    if (socket && currentConversation && receiverId) {
-      console.log("Emitting typing start:", currentConversation, receiverId);
+    if (socket && convId && receiverId) {
+      console.log("Emitting typing start:", convId, receiverId);
       socket.emit("typing_start", {
-        conversationId: currentConversation,
+        conversationId: convId,
         receiverId,
       });
     }
   },
 
   stopTyping: (receiverId) => {
-    const { currentConversation } = get();
+    const { currentConversation, currentUser } = get();
     const socket = getSocket();
+    const convId = currentConversation || (currentUser?._id && receiverId ? [currentUser._id, receiverId].sort().join("_") : null);
 
-    if (socket && currentConversation && receiverId) {
-      console.log("Emitting typing stop:", currentConversation, receiverId);
+    if (socket && convId && receiverId) {
+      console.log("Emitting typing stop:", convId, receiverId);
       socket.emit("typing_stop", {
-        conversationId: currentConversation,
+        conversationId: convId,
         receiverId,
       });
     }
@@ -662,15 +678,17 @@ deleteMessage: async (messageId, deleteType = 'everyone') => {
 
   // ======== Utility Getters ========
   isUserTyping: (userId) => {
-    const { typingUsers, currentConversation } = get();
+    const { typingUsers, currentConversation, currentUser } = get();
+    if (!userId || !currentUser) return false;
+
+    const convId = currentConversation || [currentUser._id, userId].sort().join("_");
+
     if (
-      !currentConversation ||
-      !typingUsers.has(String(currentConversation)) ||
-      !userId
+      !typingUsers.has(String(convId))
     ) {
       return false;
     }
-    return typingUsers.get(String(currentConversation)).has(String(userId));
+    return typingUsers.get(String(convId)).has(String(userId));
   },
 
   isUserOnline: (userId) => {
