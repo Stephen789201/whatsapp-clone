@@ -24,10 +24,11 @@ export default function FriendsDrawer({ isOpen, onClose, allUsers, refreshUsers 
 
   if (!isOpen) return null;
 
-  // Filter strangers/non-friends for "Add Friend" tab
+  // Filter strangers/non-friends for "Add Friend" tab (excluding the Talkies Support account)
   const strangers = allUsers.filter(
     (u) =>
       !u.isFriend &&
+      String(u.phoneNumber) !== "7892392608" &&
       u.username?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 

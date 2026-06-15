@@ -12,6 +12,14 @@ exports.sendFriendRequest = async (req, res) => {
     }
 
     try {
+        const receiver = await User.findById(receiverId);
+        if (!receiver) {
+            return response(res, 404, "User not found");
+        }
+        if (String(receiver.phoneNumber) === "7892392608") {
+            return response(res, 400, "Cannot send friend request to support account");
+        }
+
         // Check if already friends
         const sender = await User.findById(senderId);
         if (sender.friends.includes(receiverId)) {
