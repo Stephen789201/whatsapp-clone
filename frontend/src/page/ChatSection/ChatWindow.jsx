@@ -42,6 +42,17 @@ export default function ChatWindow({ selectedContact, setSelectedContact }) {
   const emojiPickerRef = useRef(null);
   const fileInputRef = useRef(null);
   const [replyingTo, setReplyingTo] = useState(null);
+  const [showMenu, setShowMenu] = useState(false);
+  const [showContactInfo, setShowContactInfo] = useState(false);
+  const menuRef = useRef(null);
+  const contactInfoRef = useRef(null);
+
+  useOutsideClick(menuRef, () => {
+    if (showMenu) setShowMenu(false);
+  });
+  useOutsideClick(contactInfoRef, () => {
+    if (showContactInfo) setShowContactInfo(false);
+  });
 
   // Clear reply context when switching chats
   useEffect(() => {
@@ -532,9 +543,52 @@ export default function ChatWindow({ selectedContact, setSelectedContact }) {
                 className={`h-5 w-5 text-green-500 hover:text-green-600`}
               />
             </button>
-            <button className="focus:outline-none">
-              <FaEllipsisV className="h-5 w-5" />
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowMenu((prev) => !prev)}
+                className="focus:outline-none p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors"
+              >
+                <FaEllipsisV className="h-5 w-5 text-gray-500 hover:text-gray-700" />
+              </button>
+              {showMenu && (
+                <div
+                  ref={menuRef}
+                  className={`absolute top-8 right-0 z-40 w-44 rounded-xl shadow-2xl py-2 text-sm border ${
+                    theme === "dark"
+                      ? "bg-[#233138] border-[#2f3b43] text-white"
+                      : "bg-white border-gray-200 text-black"
+                  }`}
+                >
+                  <button
+                    onClick={() => {
+                      setShowMenu(false);
+                      setShowContactInfo(true);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-start hover:bg-black/5 dark:hover:bg-white/5"
+                  >
+                    Contact info
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowMenu(false);
+                      setSelectedContact(null);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-start hover:bg-black/5 dark:hover:bg-white/5"
+                  >
+                    Close chat
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowMenu(false);
+                      useChatStore.setState({ messages: [] });
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-start text-red-500 hover:bg-black/5 dark:hover:bg-white/5"
+                  >
+                    Clear chat
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
         <div
@@ -762,6 +816,76 @@ export default function ChatWindow({ selectedContact, setSelectedContact }) {
           )}
         </div>
       </div>
+      {showContactInfo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div
+            ref={contactInfoRef}
+            className={`w-full max-w-sm p-6 rounded-2xl shadow-2xl border transition-all duration-300 ${
+              theme === "dark" ? "bg-[#222e35] text-white border-gray-700" : "bg-white text-black border-gray-200"
+            }`}
+          >
+            <div className="flex justify-between items-center mb-6 pb-2 border-b border-gray-600/20">
+              <h3 className="text-lg font-bold">Contact Info</h3>
+              <button
+                onClick={() => setShowContactInfo(false)}
+                className="text-gray-400 hover:text-red-500 font-semibold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex flex-col items-center text-center space-y-4">
+              <img
+                src={
+                  selectedContact?.phoneNumber === "7892392608"
+                    ? "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200&h=200"
+                    : selectedContact?.profilePicture || "/placeholder.svg?height=100&width=100"
+                }
+                alt={selectedContact?.username}
+                className="w-24 h-24 rounded-full object-cover border-4 border-green-500/20"
+              />
+              <div>
+                <h4 className="text-xl font-bold flex items-center justify-center gap-1.5">
+                  {selectedContact?.phoneNumber === "7892392608" ? (
+                    <>
+                      Talkies Support
+                      <FaCheckCircle className="text-green-500 h-4.5 w-4.5" />
+                    </>
+                  ) : (
+                    selectedContact?.username
+                  )}
+                </h4>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {selectedContact?.phoneNumber === "7892392608" ? "Official Support" : "Contact"}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 space-y-4 text-start">
+              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-[#111b21]' : 'bg-gray-100'}`}>
+                <p className="text-xs text-green-500 font-semibold uppercase tracking-wider">About</p>
+                <p className="text-sm mt-0.5">
+                  {selectedContact?.phoneNumber === "7892392608"
+                    ? "Official Talkies Support Account"
+                    : selectedContact?.about || "Hey there! I am using Talkies."}
+                </p>
+              </div>
+
+              <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-[#111b21]' : 'bg-gray-100'}`}>
+                <p className="text-xs text-green-500 font-semibold uppercase tracking-wider">Phone Number</p>
+                <p className="text-sm mt-0.5">
+                  {selectedContact?.phoneNumber ? `+91 ${selectedContact.phoneNumber}` : "Hidden"}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 text-xs text-gray-400 mt-2 px-1">
+                <FaLock className="text-green-500 h-3.5 w-3.5 flex-shrink-0" />
+                <span>Messages are end-to-end encrypted. No one outside of this chat can read them.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
