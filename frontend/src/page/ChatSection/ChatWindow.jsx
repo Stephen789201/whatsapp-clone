@@ -86,6 +86,7 @@ export default function ChatWindow({ selectedContact, setSelectedContact }) {
     fetchUserStatus,
     onlineUsers,
     typingUsers,
+    resetUnreadCount,
   } = useChatStore();
 
 
@@ -106,6 +107,13 @@ export default function ChatWindow({ selectedContact, setSelectedContact }) {
       fetchUserStatus(selectedContact._id);
     }
   }, [selectedContact, fetchUserStatus]);
+
+  // Reset unread count for the selected contact immediately
+  useEffect(() => {
+    if (selectedContact?._id) {
+      resetUnreadCount(selectedContact._id);
+    }
+  }, [selectedContact, resetUnreadCount]);
 
   useEffect(() => {
     if (selectedContact?._id) {

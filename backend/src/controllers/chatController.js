@@ -269,6 +269,15 @@ exports.markAsRead = async (req, res) => {
       { $set: { messageStatus: "read" } }
     );
 
+    // Reset conversation unread count in DB
+    const conversationIds = [...new Set(messages.map(m => m.conversation?.toString()).filter(Boolean))];
+    if (conversationIds.length > 0) {
+      await Conversation.updateMany(
+        { _id: { $in: conversationIds } },
+        { $set: { unreadCount: 0 } }
+      );
+    }
+
     // Notify original senders in real-time
     if (req.io) {
       // Group message IDs by sender to minimize socket emits

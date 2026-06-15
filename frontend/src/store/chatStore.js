@@ -500,19 +500,19 @@ export const useChatStore = create(
       shouldAppend = true;
     }
 
+    const isViewingThisChat = 
+      window.location.pathname === "/" &&
+      activeTab === "chats" &&
+      activeContactId &&
+      String(activeContactId) === String(senderId) &&
+      document.visibilityState !== "hidden";
+
     if (shouldAppend) {
       set((state) => ({
         messages: [...state.messages, message],
       }));
 
       // Automatically mark as read if actively viewing this specific conversation
-      const isViewingThisChat = 
-        window.location.pathname === "/" &&
-        activeTab === "chats" &&
-        activeContactId &&
-        String(activeContactId) === String(senderId) &&
-        document.visibilityState !== "hidden";
-
       if (String(receiverId) === String(currentUser?._id) && isViewingThisChat) {
         get().markMessagesAsRead(senderId, [message._id]);
       }
@@ -522,13 +522,12 @@ export const useChatStore = create(
     set((state) => {
       const updatedConversations = state.conversations?.data?.map((conv) => {
         if (conv._id === message.conversation) {
+          const isMsgFromOtherUser = String(message.receiver?._id) === String(currentUser?._id);
+          const shouldIncrement = isMsgFromOtherUser && !isViewingThisChat;
           return {
             ...conv,
             lastMessage: message,
-            unreadCount:
-              String(message.receiver?._id) === String(currentUser?._id)
-                ? (conv.unreadCount || 0) + 1
-                : conv.unreadCount || 0,
+            unreadCount: shouldIncrement ? (conv.unreadCount || 0) + 1 : 0,
           };
         }
         return conv;
@@ -543,10 +542,34 @@ export const useChatStore = create(
     });
   },
 
+  resetUnreadCount: (conversationPartnerId) => {
+    if (!conversationPartnerId) return;
+    set((state) => {
+      const list = Array.isArray(state.conversations) ? state.conversations : (state.conversations?.data || []);
+      const updatedConversations = list.map((conv) => {
+        const isThisConv = conv.participants?.some(
+          (p) => String(p._id || p) === String(conversationPartnerId)
+        );
+        if (isThisConv) {
+          return { ...conv, unreadCount: 0 };
+        }
+        return conv;
+      });
+      return {
+        conversations: Array.isArray(state.conversations)
+          ? updatedConversations
+          : { ...state.conversations, data: updatedConversations }
+      };
+    });
+  },
+
   // ======== Mark Unread Messages as Read ========
   markMessagesAsRead: async (conversationPartnerId, specificMessageIds = null) => {
     const { messages, currentUser } = get();
     if (!currentUser) return;
+    
+    // Reset local unreadCount to 0 for this conversation in the sidebar immediately
+    get().resetUnreadCount(conversationPartnerId);
     
     // Mark messages as read
 
