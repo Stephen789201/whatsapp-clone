@@ -17,7 +17,7 @@ import { Link, useNavigate } from "react-router-dom";
 import userStore from "../../store/useUserStore";
 import useStore from "../../store/layoutStore";
 import { useChatStore } from "../../store/chatStore";
-import { logoutUser } from "../../services/user.service";
+import { logoutUser, getAllUsers } from "../../services/user.service";
 import { toast } from "react-toastify";
 
 export default function Setting() {
@@ -30,6 +30,28 @@ export default function Setting() {
   const { clearLayout } = useStore();
   const { resetChatStore } = useChatStore();
   const navigate = useNavigate();
+  const setSelectedContact = useStore((state) => state.setSelectedContact);
+
+  const handleChatWithAdmin = async () => {
+    try {
+      const response = await getAllUsers();
+      const usersList = response?.data || response || [];
+      const adminUser = usersList.find(
+        (u) => String(u.phoneNumber) === "7892392608"
+      );
+      
+      if (adminUser) {
+        setSelectedContact(adminUser);
+        navigate("/");
+        toast.success(`Chatting with admin: ${adminUser.username}`);
+      } else {
+        toast.error("Admin user is not registered on Talkies yet. You can contact them at +91 78923 92608.");
+      }
+    } catch (error) {
+      console.error("Failed to start chat with admin:", error);
+      toast.error("Could not connect to support chat.");
+    }
+  };
 
   const toggleThemeDialog = () => {
     setIsThemeDialogOpen(!isThemeDialogOpen);
@@ -327,10 +349,10 @@ export default function Setting() {
                       <p className="text-lg font-bold tracking-wide">+91 78923 92608</p>
                     </div>
                     <button
-                      onClick={() => window.open("https://wa.me/917892392608", "_blank")}
+                      onClick={handleChatWithAdmin}
                       className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm font-semibold flex items-center justify-center gap-2 shadow-md shadow-green-500/20"
                     >
-                      Chat on WhatsApp
+                      Chat on Talkies
                     </button>
                   </div>
                 </div>
