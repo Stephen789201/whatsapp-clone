@@ -87,6 +87,8 @@ export default function ChatWindow({ selectedContact, setSelectedContact }) {
     onlineUsers,
     typingUsers,
     resetUnreadCount,
+    clearChat,
+    currentConversation,
   } = useChatStore();
 
 
@@ -586,9 +588,11 @@ export default function ChatWindow({ selectedContact, setSelectedContact }) {
                     Close chat
                   </button>
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       setShowMenu(false);
-                      useChatStore.setState({ messages: [] });
+                      if (currentConversation) {
+                        await clearChat(currentConversation);
+                      }
                     }}
                     className="w-full flex items-center gap-3 px-4 py-2.5 text-start text-red-500 hover:bg-black/5 dark:hover:bg-white/5"
                   >

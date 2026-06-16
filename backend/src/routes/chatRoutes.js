@@ -13,5 +13,6 @@ router.get('/conversations', authenticate, chatController.getConversations);
 router.get('/conversations/:conversationId/messages', authenticate, chatController.getMessages);
 router.put('/messages/read', authenticate, chatController.markAsRead);
 router.delete('/messages/:messageId', authenticate, chatController.deleteMessage);
+router.delete('/conversations/:conversationId/clear', authenticate, chatController.clearChat);
 
 module.exports = router;

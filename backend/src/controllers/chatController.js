@@ -369,3 +369,31 @@ exports.deleteMessage = async (req, res) => {
     return response(res, 500, error.message || "Internal server error");
   }
 };
+
+// Clear all messages for a user in a conversation
+exports.clearChat = async (req, res) => {
+  const { conversationId } = req.params;
+  const userId = req.user.id;
+
+  try {
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation) {
+      return response(res, 404, "Conversation not found");
+    }
+
+    if (!conversation.participants.includes(userId)) {
+      return response(res, 403, "Not authorized to access this conversation");
+    }
+
+    // Add userId to deletedFor array of all messages in this conversation
+    await Message.updateMany(
+      { conversation: conversationId },
+      { $addToSet: { deletedFor: userId } }
+    );
+
+    return response(res, 200, "Chat cleared successfully");
+  } catch (error) {
+    console.error("Error clearing chat:", error);
+    return response(res, 500, error.message || "Internal server error");
+  }
+};

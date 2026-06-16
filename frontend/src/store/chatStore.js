@@ -655,6 +655,19 @@ deleteMessage: async (messageId, deleteType = 'everyone') => {
   }
 },
 
+  // Clear all messages in a conversation
+  clearChat: async (conversationId) => {
+    try {
+      await axiosInstance.delete(`/chats/conversations/${conversationId}/clear`);
+      set({ messages: [] });
+      return true;
+    } catch (error) {
+      console.error("Error clearing chat:", error);
+      set({ error: error.response?.data?.message || error.message });
+      return false;
+    }
+  },
+
 
   // ======== Add/Change/Delete Reaction ========
   addReaction: async (messageId, emoji) => {

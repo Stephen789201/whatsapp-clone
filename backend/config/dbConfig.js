@@ -11,6 +11,9 @@ const connectDb = async () => {
                 socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
             });
             console.log('Mongo db connection established');
+            const User = require('../models/User');
+            await User.updateMany({}, { $set: { isOnline: false } });
+            console.log('All user online statuses reset to offline');
         } catch (error) {
             console.error('Error connecting to database:', error.message);
             console.log('Retrying in 5 seconds...');
